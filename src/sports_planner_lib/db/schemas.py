@@ -108,13 +108,11 @@ class Activity(Base):
     @property
     def laps_df(self):
         df = pd.DataFrame([vars(lap) for lap in self.laps])
-        df.index = df["timestamp"]
         return df
         
     @property
     def sessions_df(self):
         df = pd.DataFrame([vars(session) for session in self.sessions])
-        df.index = df["timestamp"]
         return df
 
     def get_metric(self, metric: type["Metric"] | str):
