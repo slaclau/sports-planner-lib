@@ -58,7 +58,7 @@ class Lap(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="records")
+    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="laps")
 
 
 class Session(Base):
@@ -68,7 +68,7 @@ class Session(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="records")
+    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="sessions")
 
 class Activity(Base):
     __tablename__ = "activities"
