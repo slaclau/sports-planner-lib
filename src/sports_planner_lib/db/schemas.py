@@ -85,7 +85,7 @@ class Activity(Base):
     laps: Mapped[list[Lap]] = relationship(
         primaryjoin=activity_id == Lap.activity_id,
     )
-    sessions: Mapped[lis[Session]] = relationship(
+    sessions: Mapped[list[Session]] = relationship(
         primaryjoin=activity_id == Session.activity_id, 
     )
 
