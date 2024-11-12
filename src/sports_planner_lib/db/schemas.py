@@ -80,13 +80,13 @@ class Activity(Base):
     original_file: Mapped[str] = mapped_column()
 
     records: Mapped[list[Record]] = relationship(
-        primaryjoin=activity_id == Record.activity_id,
+        primaryjoin=activity_id == Record.activity_id, back_populates="activity"
     )
     laps: Mapped[list[Lap]] = relationship(
-        primaryjoin=activity_id == Lap.activity_id,
+        primaryjoin=activity_id == Lap.activity_id, back_populates="activity"
     )
     sessions: Mapped[list[Session]] = relationship(
-        primaryjoin=activity_id == Session.activity_id, 
+        primaryjoin=activity_id == Session.activity_id, back_populates="activity"
     )
 
     metrics = {}
