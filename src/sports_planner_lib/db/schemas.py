@@ -60,10 +60,10 @@ class Lap(Base):
     )
     start_time: Mapped[datetime.datetime] = mapped_column()
 
-    start_position_latitude: Mapped[float] = mapped_column()
-    start_position_longitude: Mapped[float] = mapped_column()
-    end_position_latitude: Mapped[float] = mapped_column()
-    end_position_longitude: Mapped[float] = mapped_column()
+    start_position_lat: Mapped[float] = mapped_column()
+    start_position_long: Mapped[float] = mapped_column()
+    end_position_lat: Mapped[float] = mapped_column()
+    end_position_long: Mapped[float] = mapped_column()
 
     total_elapsed_time: Mapped[float] = mapped_column()
     total_elapsed_time: Mapped[float] = mapped_column()
