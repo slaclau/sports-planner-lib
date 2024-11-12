@@ -48,7 +48,7 @@ class Record(Base):
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
-    activity: Mapped["Activity" | None] = relationship(backref="records")
+    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="records")
 
 
 class Lap(Base):
@@ -58,7 +58,7 @@ class Lap(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    activity: Mapped["Activity" | None] = relationship(backref="records")
+    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="records")
 
 
 class Session(Base):
@@ -68,7 +68,7 @@ class Session(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    activity: Mapped["Activity" | None] = relationship(backref="records")
+    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="records")
 
 class Activity(Base):
     __tablename__ = "activities"
