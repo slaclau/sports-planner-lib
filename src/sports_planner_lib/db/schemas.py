@@ -48,13 +48,13 @@ class Record(Base):
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
-    activity = relationship("Activity", back_populates="records")   
+    activity = relationship("Activity", back_populates="records")
 
 
 class Lap(Base):
     __tablename__ = "laps"
-    
-    timestamp: Mapped[datetime.datetime] = mapped_column(primary_key=True)
+
+    index: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
@@ -63,12 +63,13 @@ class Lap(Base):
 
 class Session(Base):
     __tablename__ = "sessions"
-    
-    timestamp: Mapped[datetime.datetime] = mapped_column(primary_key=True)
+
+    index: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
     activity = relationship("Activity", back_populates="sessions")
+
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -80,19 +81,19 @@ class Activity(Base):
     original_file: Mapped[str] = mapped_column()
 
     metrics = {}
-    
+
     records = relationship(
         Record,
         primaryjoin=activity_id == Record.activity_id,
         back_populates="activity",
     )
-    
+
     laps = relationship(
         Lap,
         primaryjoin=activity_id == Lap.activity_id,
         back_populates="activity",
     )
-    
+
     sessions = relationship(
         Session,
         primaryjoin=activity_id == Session.activity_id,
@@ -104,12 +105,12 @@ class Activity(Base):
         df = pd.DataFrame([vars(record) for record in self.records])
         df.index = df["timestamp"]
         return df
-        
+
     @property
     def laps_df(self):
         df = pd.DataFrame([vars(lap) for lap in self.laps])
         return df
-        
+
     @property
     def sessions_df(self):
         df = pd.DataFrame([vars(session) for session in self.sessions])

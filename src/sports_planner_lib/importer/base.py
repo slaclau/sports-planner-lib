@@ -50,7 +50,7 @@ class ActivityImporter:
                 session.commit()
             except IntegrityError:
                 pass
-                
+
     def _import_laps_df(
         self,
         athlete: "Athlete",
@@ -76,7 +76,7 @@ class ActivityImporter:
                 session.commit()
             except IntegrityError:
                 pass
-                
+
     def _import_sessions_df(
         self,
         athlete: "Athlete",
