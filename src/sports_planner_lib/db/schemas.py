@@ -51,8 +51,23 @@ class Record(Base):
     session: Mapped[int] = mapped_column()
     lap: Mapped[int] = mapped_column()
 
-    activity = relationship("Activity", back_populates="records")
 
+class Lap(Base):
+    __tablename__ = "laps"
+    
+    timestamp: Mapped[datetime.datetime] = mapped_column(primary_key=True)
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.activity_id"), primary_key=True
+    )
+
+
+class Session(Base):
+    __tablename__ = "sessions"
+    
+    timestamp: Mapped[datetime.datetime] = mapped_column(primary_key=True)
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.activity_id"), primary_key=True
+    )
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -63,10 +78,17 @@ class Activity(Base):
     source: Mapped[str] = mapped_column()
     original_file: Mapped[str] = mapped_column()
 
-    records = relationship(
-        Record,
+    records: Mapped[Record] = relationship(
         primaryjoin=activity_id == Record.activity_id,
-        back_populates="activity",
+        backfef="activities",
+    )
+    laps: Mapped[Lap] = relationship(
+        primaryjoin=activity_id == Record.activity_id,
+        backfef="activities",
+    )
+    sessions: Mapped[Session] = relationship(
+        primaryjoin=activity_id == Record.activity_id,
+        backfef="activities",
     )
 
     metrics = {}
@@ -74,6 +96,18 @@ class Activity(Base):
     @property
     def records_df(self):
         df = pd.DataFrame([vars(record) for record in self.records])
+        df.index = df["timestamp"]
+        return df
+        
+    @property
+    def laps_df(self):
+        df = pd.DataFrame([vars(lap) for lap in self.laps])
+        df.index = df["timestamp"]
+        return df
+        
+    @property
+    def sessions_df(self):
+        df = pd.DataFrame([vars(session) for session in self.sessions])
         df.index = df["timestamp"]
         return df
 
