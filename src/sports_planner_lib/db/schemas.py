@@ -48,8 +48,6 @@ class Record(Base):
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
-    session: Mapped[int] = mapped_column()
-    lap: Mapped[int] = mapped_column()
 
 
 class Lap(Base):
@@ -83,11 +81,11 @@ class Activity(Base):
         backref="activities",
     )
     laps: Mapped[Lap] = relationship(
-        primaryjoin=activity_id == Record.activity_id,
+        primaryjoin=activity_id == Lap.activity_id,
         backref="activities",
     )
     sessions: Mapped[Session] = relationship(
-        primaryjoin=activity_id == Record.activity_id,
+        primaryjoin=activity_id == Session.activity_id,
         backref="activities",
     )
 
