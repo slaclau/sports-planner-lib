@@ -48,6 +48,7 @@ class Record(Base):
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
+    activity: Mapped[Activity] = relationship(back_populates="activities")
 
 
 class Lap(Base):
@@ -57,6 +58,7 @@ class Lap(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
+    activity: Mapped[Activity] = relationship(back_populates="activities")
 
 
 class Session(Base):
@@ -66,6 +68,7 @@ class Session(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
+    activity: Mapped[Activity] = relationship(back_populates="activities")
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -78,15 +81,15 @@ class Activity(Base):
 
     records: Mapped[Record] = relationship(
         primaryjoin=activity_id == Record.activity_id,
-        backref="activities",
+        back_populates="records",
     )
     laps: Mapped[Lap] = relationship(
         primaryjoin=activity_id == Lap.activity_id,
-        backref="activities",
+        back_populates="laps",
     )
     sessions: Mapped[Session] = relationship(
         primaryjoin=activity_id == Session.activity_id,
-        backref="activities",
+        back_populates="sessions",
     )
 
     metrics = {}
