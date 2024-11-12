@@ -64,7 +64,7 @@ class ActivityImporter:
             f"Not importing these columns from laps df: {set(laps_df) - set(needed_cols)}"
         )
         needed_cols.pop(needed_cols.index("timestamp"))
-        df = records_df[needed_cols]
+        df = laps_df[needed_cols]
         df["timestamp"] = laps_df.index
         rows = df.to_dict(orient="records")
         with athlete.Session() as session:
@@ -91,7 +91,7 @@ class ActivityImporter:
             f"Not importing these columns from sessions df: {set(sessions_df) - set(needed_cols)}"
         )
         needed_cols.pop(needed_cols.index("timestamp"))
-        df = records_df[needed_cols]
+        df = sessions_df[needed_cols]
         df["timestamp"] = sessions_df.index
         rows = df.to_dict(orient="records")
         with athlete.Session() as session:
