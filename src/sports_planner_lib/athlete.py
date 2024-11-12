@@ -28,7 +28,8 @@ class Athlete:
 
         self.Session = sessionmaker(bind=self.engine)
 
-    def get_activities(self):
+    @property
+    def activities(self):
         with self.Session() as session:
             activities = session.query(Activity).all()
             return activities
