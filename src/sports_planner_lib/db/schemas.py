@@ -48,7 +48,7 @@ class Record(Base):
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
-    activity: Mapped[Activity] = relationship(back_populates="activities")
+    activity: Mapped["Activity"] = relationship(back_populates="activities")
 
 
 class Lap(Base):
