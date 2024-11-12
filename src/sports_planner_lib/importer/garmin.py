@@ -119,6 +119,7 @@ class GarminImporter(ActivityImporter):
                     Activity(
                         activity_id=metadata["activity_id"],
                         timestamp=activity["activity"]["timestamp"],
+                        name=metadata["name"],
                         source="garmin",
                         original_file=str(activity_file),
                     )
