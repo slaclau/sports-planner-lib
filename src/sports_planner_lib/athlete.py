@@ -42,6 +42,9 @@ class Athlete:
                 importer_obj = importers[importer](self.config["importers"][importer])
                 activities = importer_obj.list_activities()
                 for activity in activities:
+                    with self.Session() as session:
+                        if session.get(Activity, activity["activity_id"]) and not force:
+                            continue
                     logger.debug(f"Downloading {activity} from {importer}")
                     activity_file = importer_obj.download_activity(
                         activity["activity_id"],
