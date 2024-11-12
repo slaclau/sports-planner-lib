@@ -81,15 +81,12 @@ class Activity(Base):
 
     records: Mapped[Record] = relationship(
         primaryjoin=activity_id == Record.activity_id,
-        back_populates="activity",
     )
     laps: Mapped[Lap] = relationship(
         primaryjoin=activity_id == Lap.activity_id,
-        back_populates="activity",
     )
     sessions: Mapped[Session] = relationship(
         primaryjoin=activity_id == Session.activity_id,
-        back_populates="activity",
     )
 
     metrics = {}
