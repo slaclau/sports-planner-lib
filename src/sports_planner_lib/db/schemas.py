@@ -58,6 +58,16 @@ class Lap(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
+    start_time: Mapped[datetime.datetime] = mapped_column()
+
+    start_position_latitude: Mapped[float] = mapped_column()
+    start_position_longitude: Mapped[float] = mapped_column()
+    end_position_latitude: Mapped[float] = mapped_column()
+    end_position_longitude: Mapped[float] = mapped_column()
+
+    total_elapsed_time: Mapped[float] = mapped_column()
+    total_elapsed_time: Mapped[float] = mapped_column()
+
     activity = relationship("Activity", back_populates="laps")
 
 
