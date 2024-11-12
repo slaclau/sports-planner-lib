@@ -12,20 +12,18 @@ class Firstbeat(ActivityMetric, ABC):
     allow_zero: bool
 
     def applicable(self):
-        if "unknown_messages" in self.activity.summaries:
-            for unknown in self.activity.summaries["unknown_messages"]:
-                if unknown["type"] == "firstbeat":
-                    return True
+        for unknown in self.activity.unknown_messages:
+            if unknown.type == "firstbeat":
+                return True
         return False
 
     def compute(self):
-        if "unknown_messages" in self.activity.summaries:
-            for unknown in self.activity.summaries["unknown_messages"]:
-                if unknown["type"] == "firstbeat":
-                    rtn = unknown["record"][self.field_name] * self.scale
-                    if rtn == 0 and not self.allow_zero:
-                        rtn = np.nan
-                    return rtn
+        for unknown in self.activity.unknown_messages:
+            if unknown.type == "firstbeat":
+                rtn = unknown.record[self.field_name] * self.scale
+                if rtn == 0 and not self.allow_zero:
+                    rtn = np.nan
+                return rtn
 
 
 class VO2Max(Firstbeat):

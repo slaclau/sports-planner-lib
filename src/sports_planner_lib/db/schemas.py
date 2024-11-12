@@ -1,8 +1,9 @@
 import datetime
 import typing
+from typing import TYPE_CHECKING
 
 import pandas as pd
-from sqlalchemy import Column, ForeignKey, Integer, create_engine
+from sqlalchemy import Column, ForeignKey, Integer, create_engine, JSON
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -20,6 +21,9 @@ from sports_planner_lib.metrics.zones import (
     ZonesMeta,
 )
 from sports_planner_lib.metrics.calculate import MetricsCalculator, get_metrics_map
+
+if TYPE_CHECKING:
+    from sports_planner_lib.athlete import Athlete
 
 
 class Base(MappedAsDataclass, DeclarativeBase):
@@ -78,7 +82,36 @@ class Session(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
+
+    sport: Mapped[str] = mapped_column()
+    sub_sport: Mapped[str] = mapped_column()
+
     activity = relationship("Activity", back_populates="sessions")
+
+
+class UnknownMessage(Base):
+    __tablename__ = "unknown_messages"
+
+    id = mapped_column(Integer, primary_key=True, autoincrement=True)
+    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.activity_id"))
+
+    timestamp: Mapped[datetime.datetime | None] = mapped_column()
+    type: Mapped[str] = mapped_column()
+    record: dict[str, str | float | int] = mapped_column(JSON)
+
+    activity = relationship("Activity", back_populates="unknown_messages")
+
+
+class Metric(Base):
+    __tablename__ = "metrics"
+
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.activity_id"), primary_key=True
+    )
+    name: Mapped[str] = mapped_column(primary_key=True)
+    value: Mapped[str | float | dict[str, str]] = mapped_column(JSON)
+
+    activity = relationship("Activity", back_populates="_metrics")
 
 
 class Activity(Base):
@@ -89,8 +122,6 @@ class Activity(Base):
     name: Mapped[str] = mapped_column()
     source: Mapped[str] = mapped_column()
     original_file: Mapped[str] = mapped_column()
-
-    metrics = {}
 
     records = relationship(
         Record,
@@ -110,6 +141,25 @@ class Activity(Base):
         back_populates="activity",
     )
 
+    unknown_messages = relationship(
+        UnknownMessage,
+        primaryjoin=activity_id == UnknownMessage.activity_id,
+        back_populates="activity",
+    )
+
+    _metrics = relationship(
+        Metric,
+        primaryjoin=activity_id == Metric.activity_id,
+        back_populates="activity",
+    )
+
+    @property
+    def metrics(self):
+        return {metric.name: metric.value for metric in self._metrics}
+
+    def get_metric(self, name):
+        return self.metrics[name]
+
     @property
     def records_df(self):
         df = pd.DataFrame([vars(record) for record in self.records])
@@ -125,22 +175,6 @@ class Activity(Base):
     def sessions_df(self):
         df = pd.DataFrame([vars(session) for session in self.sessions])
         return df
-
-    def get_metric(self, metric: type["Metric"] | str):
-        if isinstance(metric, str):
-            metric = get_metrics_map()[metric]
-        try:
-            if metric.__class__ in [
-                CurveMeta,
-                MeanMaxMeta,
-                TimeInZoneMeta,
-                ZoneDefinitionsMeta,
-                ZonesMeta,
-            ]:
-                return MetricsCalculator(self, [metric]).metrics[metric.name]
-            return MetricsCalculator(self, [metric]).metrics[metric]
-        except KeyError:
-            return
 
 
 if __name__ == "__main__":

@@ -9,8 +9,9 @@ import sweat
 import yaml
 from garth.exc import GarthException
 
-from sports_planner_lib.db.schemas import Activity
+from sports_planner_lib.db.schemas import Activity, UnknownMessage
 from sports_planner_lib.importer.base import ActivityImporter, LoginException
+from sports_planner_lib.utils.serial import serialize_dict
 
 if typing.TYPE_CHECKING:
     from sports_planner_lib.athlete import Athlete
@@ -135,6 +136,51 @@ class GarminImporter(ActivityImporter):
             self._import_sessions_df(
                 athlete, metadata["activity_id"], activity["sessions"], force=force
             )
+            self._import_unknown_messages(
+                athlete,
+                metadata["activity_id"],
+                activity["unknown_messages"],
+                force=force,
+            )
+
+    def _import_unknown_messages(
+        self,
+        athlete: "Athlete",
+        activity_id: int,
+        unknown_messages: list[dict[str, str | dict[str, str | float | int]]],
+        force=False,
+    ):
+        with athlete.Session() as session:
+            for unknown_message in unknown_messages:
+                message_type = unknown_message["type"]
+                record = unknown_message["record"]
+                if "timestamp" in record:
+                    timestamp = record.pop("timestamp")
+                else:
+                    timestamp = None
+                record = serialize_dict(record)
+                if force:
+                    session.merge(
+                        UnknownMessage(
+                            activity_id=activity_id,
+                            timestamp=timestamp,
+                            type=message_type,
+                            record=record,
+                        )
+                    )
+                else:
+                    session.add(
+                        UnknownMessage(
+                            activity_id=activity_id,
+                            timestamp=timestamp,
+                            type=message_type,
+                            record=record,
+                        )
+                    )
+            try:
+                session.commit()
+            except IntegrityError:
+                pass
 
     @staticmethod
     def _read_fit_file(activity_file: pathlib.Path) -> dict:
@@ -145,7 +191,6 @@ class GarminImporter(ActivityImporter):
                 resample=True,
                 interpolate=True,
                 hrv=True,
-                metadata=True,
                 unknown_messages=True,
             )
         else:

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from sports_planner_lib.metrics.activity import AverageSpeed
 
 if TYPE_CHECKING:
-    from sports_planner_lib.io.files import Activity
+    from sports_planner_lib.io.files import Activity, Athlete
 
 from sports_planner_lib.metrics import *
 from sports_planner_lib.metrics.activity import Curve, MeanMax
@@ -17,7 +17,7 @@ all_metrics = None
 metrics_map = None
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 
 def get_all_metrics() -> set[type[base.Metric]]:
@@ -51,7 +51,12 @@ logger.debug(f"Getting all metrics {get_all_metrics()}")
 
 
 class MetricsCalculator:
-    def __init__(self, activity: "Activity", desired_metrics, pre_ordered=False):
+    def __init__(
+        self,
+        activity: "Activity",
+        desired_metrics,
+        pre_ordered=False,
+    ):
         self.activity = activity
         self.deps = desired_metrics if pre_ordered else self.order_deps(desired_metrics)
         self.metrics = activity.metrics
@@ -89,20 +94,13 @@ class MetricsCalculator:
             try:
                 metric_instance = metric(self.activity, self.metrics)
                 if metric_instance.get_applicable() and (
-                    not (metric in self.metrics or metric.name in self.metrics)
-                    or metric in recompute
-                    or recompute_all
+                    metric.name not in retrieved or metric in recompute or recompute_all
                 ):
-                    if metric in get_all_metrics():
-                        self.metrics[metric] = metric_instance.compute()
-                    else:
-                        self.metrics[metric.name] = metric_instance.compute()
+                    self.activity.add_metric(metric.name, metric_instance.compute())
                     computed.append(metric.name)
             except AssertionError as e:
                 print(f"AssertionError: {e}")
                 print(metric.name)
-        # if computed:
-        #    self.activity.cache()
         debug_string += f"Retrieved {retrieved} from cache\n"
         debug_string += f"Computed and cached {computed}\n"
         logger.debug(debug_string)

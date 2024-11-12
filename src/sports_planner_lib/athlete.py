@@ -62,10 +62,10 @@ if __name__ == "__main__":
     base_logger = logging.getLogger("")
     base_logger.setLevel(logging.DEBUG)
     athlete = Athlete("seb.laclau@gmail.com")
-    # athlete.update_db(force=False)
+    athlete.update_db(force=False)
 
-    a = athlete.get_activities()
+    a = athlete.activities
 
     with athlete.Session() as session:
-        act = session.get(Activity, a[1].activity_id)
-        print(act.records_df.index)
+        act = session.get(Activity, a[0].activity_id)
+        print(act.sessions)

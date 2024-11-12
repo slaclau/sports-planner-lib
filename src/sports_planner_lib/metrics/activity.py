@@ -59,15 +59,7 @@ class Sport(ActivityMetric):
             `True` if the activity summary contains the key "sport" or the "sport" field
             of the dataframe has a unique value.
         """
-        if (
-            "sports" in self.activity.summaries
-            and len(self.activity.summaries["sports"].index) == 1
-        ):
-            return True
-        if (
-            "sport" in self.activity.records_df.columns
-            and len(self.activity.records_df["sport"].unique()) == 1
-        ):
+        if len(self.activity.sessions) == 1:
             return True
         return False
 
@@ -80,17 +72,12 @@ class Sport(ActivityMetric):
             A dictionary with the following possible keys: sport, sub_sport, and name.
             sport is always included.
         """
-        if "sports" in self.activity.summaries:
-            sports = self.activity.summaries["sports"]
-            assert len(sports.index) == 1
+        if len(self.activity.sessions) == 1:
+            self.activity.sessions[0].sport
             return {
-                "sport": sports["sport"].iloc[0],
-                "sub_sport": sports["sub_sport"].iloc[0],
-                "name": sports["name"].iloc[0],
+                "sport": self.activity.sessions[0].sport,
+                "sub_sport": self.activity.sessions[0].sub_sport,
             }
-        if "sport" in self.activity.records_df.columns:
-            assert len(self.activity.records_df["sport"].unique()) == 1
-            return {"sport": self.activity.records_df["sport"].unique()[0]}
         return {"sport": "UNKNOWN"}
 
 
@@ -118,7 +105,7 @@ class ActivityDate(ActivityMetric):
         datetime.date
             When the activity started
         """
-        return self.activity.records_df.index[0].date()
+        return self.activity.records_df.index[0].date().isoformat()
 
 
 class AverageSpeed(ActivityMetric):

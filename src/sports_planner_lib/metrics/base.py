@@ -5,7 +5,7 @@ from abc import abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from sports_planner_lib.io.files import Activity
+    from sports_planner_lib.db.schemas import Activity, Athlete
 
 
 class Metric:
@@ -33,10 +33,12 @@ class Metric:
     unit = ""
     #: When the method of calculating the metric was last changed
     last_changed = None
+    #: The data type of the metric
+    data_type = None
 
     def __init__(self, activity: "Activity", results=None):
         self.activity = activity
-        self.df = activity.records_df
+        self.df = self.activity.records_df
         self.results = results
 
     @abstractmethod
