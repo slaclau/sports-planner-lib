@@ -48,7 +48,7 @@ class Record(Base):
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
-    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="records")
+    activity = relationship("Activity", back_populates="records")   
 
 
 class Lap(Base):
@@ -58,7 +58,7 @@ class Lap(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="laps")
+    activity = relationship("Activity", back_populates="laps")
 
 
 class Session(Base):
@@ -68,7 +68,7 @@ class Session(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    activity: Mapped[typing.Optional["Activity"]] = relationship(backref="sessions")
+    activity = relationship("Activity", back_populates="sessions")
 
 class Activity(Base):
     __tablename__ = "activities"
@@ -80,6 +80,24 @@ class Activity(Base):
     original_file: Mapped[str] = mapped_column()
 
     metrics = {}
+    
+    records = relationship(
+        Record,
+        primaryjoin=activity_id == Record.activity_id,
+        back_populates="activity",
+    )
+    
+    laps = relationship(
+        Lap,
+        primaryjoin=activity_id == Lap.activity_id,
+        back_populates="activity",
+    )
+    
+    sessions = relationship(
+        Session,
+        primaryjoin=activity_id == Session.activity_id,
+        back_populates="activity",
+    )
 
     @property
     def records_df(self):
