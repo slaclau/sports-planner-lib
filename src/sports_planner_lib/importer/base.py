@@ -1,6 +1,6 @@
 import pathlib
 import typing
-from sports_planner_lib.db.schemas import Record
+from sports_planner_lib.db.schemas import Record, Lap, Session
 import pandas as pd
 import logging
 
@@ -34,7 +34,7 @@ class ActivityImporter:
         records_df["activity_id"] = activity_id
         needed_cols = Record.__table__.columns.keys()
         logger.debug(
-            f"Not importing these columns: {set(records_df) - set(needed_cols)}"
+            f"Not importing these columns from records df: {set(records_df) - set(needed_cols)}"
         )
         needed_cols.pop(needed_cols.index("timestamp"))
         df = records_df[needed_cols]
@@ -46,6 +46,60 @@ class ActivityImporter:
                     session.merge(Record(**row))
                 else:
                     session.add(Record(**row))
+            try:
+                session.commit()
+            except IntegrityError:
+                pass
+                
+    def _import_laps_df(
+        self,
+        athlete: "Athlete",
+        activity_id: int,
+        laps_df: pd.DataFrame,
+        force=False,
+    ):
+        laps_df["activity_id"] = activity_id
+        needed_cols = Lap.__table__.columns.keys()
+        logger.debug(
+            f"Not importing these columns from laps df: {set(laps_df) - set(needed_cols)}"
+        )
+        needed_cols.pop(needed_cols.index("timestamp"))
+        df = records_df[needed_cols]
+        df["timestamp"] = laps_df.index
+        rows = df.to_dict(orient="records")
+        with athlete.Session() as session:
+            for row in rows:
+                if force:
+                    session.merge(Lap(**row))
+                else:
+                    session.add(Lap(**row))
+            try:
+                session.commit()
+            except IntegrityError:
+                pass
+                
+    def _import_sessions_df(
+        self,
+        athlete: "Athlete",
+        activity_id: int,
+        sessions_df: pd.DataFrame,
+        force=False,
+    ):
+        sessions_df["activity_id"] = activity_id
+        needed_cols = Session.__table__.columns.keys()
+        logger.debug(
+            f"Not importing these columns from sessions df: {set(sessions_df) - set(needed_cols)}"
+        )
+        needed_cols.pop(needed_cols.index("timestamp"))
+        df = records_df[needed_cols]
+        df["timestamp"] = sessions_df.index
+        rows = df.to_dict(orient="records")
+        with athlete.Session() as session:
+            for row in rows:
+                if force:
+                    session.merge(Session(**row))
+                else:
+                    session.add(Session(**row))
             try:
                 session.commit()
             except IntegrityError:

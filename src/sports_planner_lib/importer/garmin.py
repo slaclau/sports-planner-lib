@@ -128,6 +128,12 @@ class GarminImporter(ActivityImporter):
             self._import_records_df(
                 athlete, metadata["activity_id"], activity["data"], force=force
             )
+            self._import_laps_df(
+                athlete, metadata["activity_id"], activity["laps"], force=force
+            )
+            self._import_sessions_df(
+                athlete, metadata["activity_id"], activity["sessions"], force=force
+            )
 
     @staticmethod
     def _read_fit_file(activity_file: pathlib.Path) -> dict:
