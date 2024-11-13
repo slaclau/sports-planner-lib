@@ -74,6 +74,7 @@ class Athlete:
                                 name=metric.__name__,
                                 value=value
                             ))
+                            session.commit()
                     except Exception as e:
                         print(e) 
 
