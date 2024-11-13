@@ -78,6 +78,7 @@ class Athlete:
                             session.commit()
                     except Exception as e:
                         print(f"{metric}: {e}")
+                        session.rollback()
 
 
 if __name__ == "__main__":
