@@ -19,13 +19,15 @@ metrics_map = None
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+precompute_columns = ["power", "heartrate", "speed"]
 
 def get_all_metrics() -> set[type[base.Metric]]:
     global all_metrics
     if all_metrics is None:
         all_metrics = _get_all_subclasses(base.Metric)
+        all_metrics = all_metrics + [Curve[column] for column in precompute_columns]
     return all_metrics
-
+        
 
 def get_metrics_map():
     global metrics_map

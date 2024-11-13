@@ -59,7 +59,8 @@ class Athlete:
         self.update_metrics(recompute=force)
 
     def update_metrics(self, recompute=False):
-        metrics = MetricsCalculator.order_deps(list(get_all_metrics()))
+        metrics = list(get_all_metrics())
+        metrics = MetricsCalculator.order_deps(metrics)
         for activity in self.activities:
             with self.Session() as session:
                 activity = session.get(Activity, activity.activity_id)
@@ -76,7 +77,7 @@ class Athlete:
                             ))
                             session.commit()
                     except Exception as e:
-                        print(e) 
+                        print(f"{metric}: {e}")
 
 
 if __name__ == "__main__":
