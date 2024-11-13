@@ -182,7 +182,7 @@ class Activity(Base):
             name = name.__name__
         for metric in self.metrics:
             if metric.name == name:
-                if metric.value is not None
+                if metric.value is not None:
                     return metric.value
                 return metric.json_value 
         print(f"{name} not found")
