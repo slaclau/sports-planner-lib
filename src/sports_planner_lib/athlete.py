@@ -5,7 +5,7 @@ import yaml
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import pandas as pd
-from sports_planner_lib.db.schemas import Activity, Base, Record
+from sports_planner_lib.db.schemas import Activity, Base, Record, Metric
 from sports_planner_lib.importer.garmin import GarminImporter
 from sports_planner_lib.metrics.calculate import get_all_metrics, MetricsCalculator
 
@@ -67,7 +67,13 @@ class Athlete:
                     metric_instance = metric(activity)
                     try:
                         if metric_instance.applicable():
-                            print(f"{metric.__name__}: {metric_instance.compute()}")
+                            value = metric_instance.compute()
+                            print(f"{metric}: {value}")
+                            session.add(Metric(
+                                activity_id=activity.activity_id,
+                                name=metric.__name__,
+                                value=value
+                            ))
                     except Exception as e:
                         print(e) 
 
