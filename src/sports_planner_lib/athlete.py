@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 import pandas as pd
 from sports_planner_lib.db.schemas import Activity, Base, Record
 from sports_planner_lib.importer.garmin import GarminImporter
+from sports_planner_lib.metrics.calculate import get_all_metrics, MetricsCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,15 @@ class Athlete:
                     importer_obj.import_activity(
                         self, activity, activity_file, force=force
                     )
+        self.update_metrics(recompute=force)
+
+    def update_metrics(self, recompute=False):
+        metrics = MetricsCalculator.order_deps(list(get_all_metrics()))
+        for activity in activities:
+            for metric in metrics:
+                metric_instance = metric(activity)
+                if metric_instance.is_applicable():
+                    print(f"{metric.__name__}: {metric_instance.compute())}")
 
 
 if __name__ == "__main__":
