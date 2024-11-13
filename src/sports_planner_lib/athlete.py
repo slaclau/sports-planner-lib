@@ -65,8 +65,11 @@ class Athlete:
                 activity = session.get(Activity, activity.activity_id)
                 for metric in metrics:
                     metric_instance = metric(activity)
-                    if metric_instance.applicable():
-                        print(f"{metric.__name__}: {metric_instance.compute()}")
+                    try:
+                        if metric_instance.applicable():
+                            print(f"{metric.__name__}: {metric_instance.compute()}")
+                    except Exception as e:
+                        print(e) 
 
 
 if __name__ == "__main__":
