@@ -61,10 +61,12 @@ class Athlete:
     def update_metrics(self, recompute=False):
         metrics = MetricsCalculator.order_deps(list(get_all_metrics()))
         for activity in self.activities:
-            for metric in metrics:
-                metric_instance = metric(activity)
-                if metric_instance.is_applicable():
-                    print(f"{metric.__name__}: {metric_instance.compute()}")
+            with self.Session() as session:
+                activity = session.get(Activity, activity.activity_id)
+                for metric in metrics:
+                    metric_instance = metric(activity)
+                    if metric_instance.is_applicable():
+                        print(f"{metric.__name__}: {metric_instance.compute()}")
 
 
 if __name__ == "__main__":
