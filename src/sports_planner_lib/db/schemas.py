@@ -110,7 +110,7 @@ class Metric(Base):
         ForeignKey("activities.activity_id"), primary_key=True
     )
     name: Mapped[str] = mapped_column(primary_key=True)
-    value: Mapped[float | None] = mapped_column
+    value: Mapped[float | None] = mapped_column()
     json_value: Mapped[str | float | dict[str, str] | None] = mapped_column(JSON)
 
     activity = relationship("Activity", back_populates="metrics")
