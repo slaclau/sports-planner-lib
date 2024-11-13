@@ -105,7 +105,7 @@ class ActivityDate(ActivityMetric):
         datetime.date
             When the activity started
         """
-        return self.activity.records_df.index[0].date().isoformat()
+        return self.activity.records_df.index[0].date().timestamp()
 
 
 class AverageSpeed(ActivityMetric):
@@ -405,7 +405,7 @@ class MeanMaxMeta(type):
             {
                 "column": column,
                 "time": time,
-                "deps": [Curve[column]],
+                "deps": [],
                 "name": f"{duration} max {column}",
             },
         )
@@ -428,8 +428,7 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
         bool
             `True` if the relevant :class:`Curve` extends for a sufficient duration
         """
-        curve = self.get_metric(Curve[self.column])
-        return max(curve["x"]) >= self.time
+        return self.column in self.df.columns and len(self.df.index) >= time
 
     def compute(self) -> float:
         """

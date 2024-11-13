@@ -1,10 +1,11 @@
+import logging
 import pathlib
 import typing
-from sports_planner_lib.db.schemas import Record, Lap, Session
-import pandas as pd
-import logging
 
+import pandas as pd
 from sqlalchemy.exc import IntegrityError
+
+from sports_planner_lib.db.schemas import Lap, Record, Session
 
 if typing.TYPE_CHECKING:
     from sports_planner_lib.athlete import Athlete

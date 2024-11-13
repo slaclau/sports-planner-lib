@@ -1,13 +1,16 @@
 import logging
 import pathlib
 
+import pandas as pd
+import sweat
 import yaml
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
-import pandas as pd
-from sports_planner_lib.db.schemas import Activity, Base, Record, Metric
+
+from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Record
 from sports_planner_lib.importer.garmin import GarminImporter
-from sports_planner_lib.metrics.calculate import get_all_metrics, MetricsCalculator
+from sports_planner_lib.metrics.calculate import MetricsCalculator, get_all_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +59,33 @@ class Athlete:
                     importer_obj.import_activity(
                         self, activity, activity_file, force=force
                     )
+        self.update_meanmaxes(recompute=force)
         self.update_metrics(recompute=force)
+
+    def update_meanmaxes(self, recompute=False):
+        cols = MeanMax.__table__.columns.keys()
+        cols.pop(cols.index("activity_id"))
+        cols.pop(cols.index("duration"))
+
+        source_cols = [col.replace("mean_max_", "") for col in cols]
+
+        for activity in self.activities:
+            with self.Session() as session:
+                activity = session.get(Activity, activity.activity_id)
+                logger.debug(f"Getting mean max values for {activity.activity_id}")
+                df = activity.records_df.sweat.mean_max(source_cols)
+                df["duration"] = df.index.total_seconds()
+                rows = df.to_dict(orient="records")
+                logger.debug(f"Importing mean max values for {activity.activity_id}")
+                for row in rows:
+                    if recompute:
+                        session.merge(MeanMax(activity_id=activity.activity_id, **row))
+                    else:
+                        session.add(MeanMax(activity_id=activity.activity_id, **row))
+                try:
+                    session.commit()
+                except IntegrityError:
+                    pass
 
     def update_metrics(self, recompute=False):
         metrics = list(get_all_metrics())
@@ -70,11 +99,13 @@ class Athlete:
                         if metric_instance.applicable():
                             value = metric_instance.compute()
                             print(f"{metric}: {value}")
-                            session.add(Metric(
-                                activity_id=activity.activity_id,
-                                name=metric.__name__,
-                                value=value
-                            ))
+                            session.add(
+                                Metric(
+                                    activity_id=activity.activity_id,
+                                    name=metric.__name__,
+                                    value=value,
+                                )
+                            )
                             session.commit()
                     except Exception as e:
                         print(f"{metric}: {e}")
@@ -86,10 +117,10 @@ if __name__ == "__main__":
     base_logger = logging.getLogger("")
     base_logger.setLevel(logging.DEBUG)
     athlete = Athlete("seb.laclau@gmail.com")
-    athlete.update_db(force=False)
+    athlete.update_db(force=True)
 
     a = athlete.activities
 
     with athlete.Session() as session:
         act = session.get(Activity, a[0].activity_id)
-        print(act.metrics)
+        print(act.meanmaxes)

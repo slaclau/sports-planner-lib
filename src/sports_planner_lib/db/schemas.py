@@ -1,9 +1,10 @@
+import abc
 import datetime
 import typing
 from typing import TYPE_CHECKING
 
 import pandas as pd
-from sqlalchemy import Column, ForeignKey, Integer, create_engine, JSON
+from sqlalchemy import JSON, Column, ForeignKey, Integer, create_engine
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -15,12 +16,12 @@ from sqlalchemy.orm import (
 )
 
 from sports_planner_lib.metrics.activity import CurveMeta, MeanMaxMeta
+from sports_planner_lib.metrics.calculate import MetricsCalculator, get_metrics_map
 from sports_planner_lib.metrics.zones import (
     TimeInZoneMeta,
     ZoneDefinitionsMeta,
     ZonesMeta,
 )
-from sports_planner_lib.metrics.calculate import MetricsCalculator, get_metrics_map
 
 if TYPE_CHECKING:
     from sports_planner_lib.athlete import Athlete
@@ -111,7 +112,23 @@ class Metric(Base):
     name: Mapped[str] = mapped_column(primary_key=True)
     value: Mapped[str | float | dict[str, str]] = mapped_column(JSON)
 
-    activity = relationship("Activity", back_populates="_metrics")
+    activity = relationship("Activity", back_populates="metrics")
+
+
+class MeanMax(Base):
+    __tablename__ = "meanmaxes"
+
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.activity_id"), primary_key=True
+    )
+    duration: Mapped[int] = mapped_column(primary_key=True)
+
+    mean_max_speed: Mapped[float] = mapped_column()
+    mean_max_power: Mapped[float] = mapped_column()
+    mean_max_heartrate: Mapped[float] = mapped_column()
+    mean_max_cadence: Mapped[float] = mapped_column()
+
+    activity = relationship("Activity", back_populates="meanmaxes")
 
 
 class Activity(Base):
@@ -147,18 +164,25 @@ class Activity(Base):
         back_populates="activity",
     )
 
-    _metrics = relationship(
+    metrics = relationship(
         Metric,
         primaryjoin=activity_id == Metric.activity_id,
         back_populates="activity",
     )
 
-    @property
-    def metrics(self):
-        return {metric.name: metric.value for metric in self._metrics}
+    meanmaxes = relationship(
+        MeanMax,
+        primaryjoin=activity_id == MeanMax.activity_id,
+        back_populates="activity",
+    )
 
     def get_metric(self, name):
-        return self.metrics[name]
+        if isinstance(name, type):
+            name = name.__name__
+        for metric in self.metrics:
+            if metric.name == name:
+                return metric.value
+        print(f"{name} not found")
 
     @property
     def records_df(self):
