@@ -98,14 +98,24 @@ class Athlete:
                     try:
                         if metric_instance.applicable():
                             value = metric_instance.compute()
-                            print(f"{metric}: {value}")
-                            session.add(
-                                Metric(
-                                    activity_id=activity.activity_id,
-                                    name=metric.__name__,
-                                    value=value,
+                            try:
+                                value = float(value)
+                                session.add(
+                                    Metric(
+                                        activity_id=activity.activity_id,
+                                        name=metric.__name__,
+                                        value=value,
+                                    )
                                 )
-                            )
+                            except TypeError:
+                                session.add(
+                                    Metric(
+                                        activity_id=activity.activity_id,
+                                        name=metric.__name__,
+                                        json_value=value,
+                                    )
+                                )
+                            print(f"{metric}: {value}")      
                             session.commit()
                     except Exception as e:
                         print(f"{metric}: {e}")
@@ -117,10 +127,10 @@ if __name__ == "__main__":
     base_logger = logging.getLogger("")
     base_logger.setLevel(logging.DEBUG)
     athlete = Athlete("seb.laclau@gmail.com")
-    athlete.update_db(force=True)
+    athlete.update_db(force=False)
 
     a = athlete.activities
 
     with athlete.Session() as session:
         act = session.get(Activity, a[0].activity_id)
-        print(act.meanmaxes)
+        print(act.metrics)

@@ -110,7 +110,8 @@ class Metric(Base):
         ForeignKey("activities.activity_id"), primary_key=True
     )
     name: Mapped[str] = mapped_column(primary_key=True)
-    value: Mapped[str | float | dict[str, str]] = mapped_column(JSON)
+    value: Mapped[float | None] = mapped_column
+    json_value: Mapped[str | float | dict[str, str] | None] = mapped_column(JSON)
 
     activity = relationship("Activity", back_populates="metrics")
 
@@ -181,7 +182,9 @@ class Activity(Base):
             name = name.__name__
         for metric in self.metrics:
             if metric.name == name:
-                return metric.value
+                if metric.value is not None
+                    return metric.value
+                return metric.json_value 
         print(f"{name} not found")
 
     @property
