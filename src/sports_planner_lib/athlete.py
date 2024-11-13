@@ -89,4 +89,4 @@ if __name__ == "__main__":
 
     with athlete.Session() as session:
         act = session.get(Activity, a[0].activity_id)
-        print(act.sessions)
+        print(act.metrics)
