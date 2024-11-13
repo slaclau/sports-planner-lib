@@ -64,7 +64,7 @@ class Athlete:
             for metric in metrics:
                 metric_instance = metric(activity)
                 if metric_instance.is_applicable():
-                    print(f"{metric.__name__}: {metric_instance.compute())}")
+                    print(f"{metric.__name__}: {metric_instance.compute()}")
 
 
 if __name__ == "__main__":
