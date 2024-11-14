@@ -59,25 +59,7 @@ class Metric:
             The value of the metric retrieved
         """
         assert metric in self.deps
-        from sports_planner_lib.metrics.activity import (  # pylint: disable=C0415
-            CurveMeta,
-            MeanMaxMeta,
-        )
-        from sports_planner_lib.metrics.zones import (
-            TimeInZoneMeta,
-            ZoneDefinitionsMeta,
-            ZonesMeta,
-        )
-
-        if metric.__class__ not in [
-            CurveMeta,
-            MeanMaxMeta,
-            TimeInZoneMeta,
-            ZoneDefinitionsMeta,
-            ZonesMeta,
-        ]:
-            return self.results[metric]
-        return self.results[metric.name]
+        return self.activity.get_metric(metric)
 
     def get_applicable(self):
         """Get whether this metric is applicable.
