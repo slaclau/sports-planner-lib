@@ -59,9 +59,7 @@ class Sport(ActivityMetric):
             `True` if the activity summary contains the key "sport" or the "sport" field
             of the dataframe has a unique value.
         """
-        if len(self.activity.sessions) == 1:
-            return True
-        return False
+        return len(self.activity.sessions) == 1: 
 
     def compute(self):
         """
@@ -105,7 +103,7 @@ class ActivityDate(ActivityMetric):
         datetime.date
             When the activity started
         """
-        return datetime.combine(self.activity.records_df.index[0], datetime.time()).timestamp()
+        return datetime.datetime.combine(self.activity.records_df.index[0], datetime.time()).timestamp()
 
 
 class AverageSpeed(ActivityMetric):
