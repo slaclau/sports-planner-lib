@@ -434,10 +434,9 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
         Returns
         -------
         float
-            The point on the :class:`Curve` corresponding to the duration
+            The corresponding meanmax value
         """
-        curve = self.get_metric(Curve[self.column])
-        return curve["y"][self.time]
+        return self.activity.meanmaxes[self.time - 1].getattr(f"mean_max_{self.column}")
 
 
 class RunningMetric(ActivityMetric, ABC):
