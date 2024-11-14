@@ -40,7 +40,7 @@ class Athlete:
             activities = session.query(Activity).all()
             return activities
 
-    def update_db(self, force=False):
+    def import_activities(self, redownload=False, reimport=False):
         importers = {"garmin": GarminImporter}
         for importer in self.config["importers"]:
             if "activities" in self.config["importers"][importer]["roles"]:
@@ -49,20 +49,22 @@ class Athlete:
                 activities = importer_obj.list_activities()
                 for activity in activities:
                     with self.Session() as session:
-                        if session.get(Activity, activity["activity_id"]) and not force:
+                        if session.get(Activity, activity["activity_id"]) and not redownload:
                             continue
                     logger.debug(f"Downloading {activity} from {importer}")
                     activity_file = importer_obj.download_activity(
                         activity["activity_id"],
                         self.dir / "downloaded_activities",
-                        force=force,
+                        force=redownload,
                     )
 
                     importer_obj.import_activity(
-                        self, activity, activity_file, force=force
+                        self, activity, activity_file, force=reimport
                     )
-        self.update_meanmaxes(recompute=force)
-        self.update_metrics(recompute=force)
+
+    def update_db(self, recompute=False)
+        self.update_meanmaxes(recompute=recompute)
+        self.update_metrics(recompute=recompute)
 
     def update_meanmaxes(self, recompute=False):
         cols = MeanMax.__table__.columns.keys()
@@ -74,6 +76,8 @@ class Athlete:
         for activity in self.activities:
             with self.Session() as session:
                 activity = session.get(Activity, activity.activity_id)
+                if len(activity.meanmaxes) > 0 and not recompute:
+                    continue
                 logger.debug(f"Getting mean max values for {activity.activity_id}")
                 df = activity.records_df.sweat.mean_max(source_cols)
                 df["duration"] = df.index.total_seconds()
@@ -99,6 +103,8 @@ class Athlete:
         for activity in self.activities:
             with self.Session() as session:
                 activity = session.get(Activity, activity.activity_id, options=[joinedload(Activity.records)])
+                if len(activity.metrics) > 0 and not recompute:
+                    continue
                 for metric in metrics:
                     metric_instance = metric(activity)
                     try:
@@ -136,7 +142,7 @@ if __name__ == "__main__":
     base_logger = logging.getLogger("")
     base_logger.setLevel(logging.DEBUG)
     athlete = Athlete("seb.laclau@gmail.com")
-    athlete.update_db(force=False)
+    athlete.update_db(recompute=False)
 
     a = athlete.activities
 
