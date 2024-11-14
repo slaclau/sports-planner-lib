@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Record
 from sports_planner_lib.importer.garmin import GarminImporter
 from sports_planner_lib.metrics.calculate import MetricsCalculator, get_all_metrics
-from sports_planner_lib.metrics.activity import Curve, MeanMax
+from sports_planner_lib.metrics.activity import Curve as CurveMetric, MeanMax as MeanMaxMetric
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +90,8 @@ class Athlete:
 
     def update_metrics(self, recompute=False):
         metrics = get_all_metrics()
-        metrics.pop(Curve)
-        metrics.pop(MeanMax)
+        metrics.pop(CurveMetric)
+        metrics.pop(MeanMaxMetric)
         
         metrics = MetricsCalculator.order_deps(list(metrics))
         for activity in self.activities:
