@@ -90,8 +90,8 @@ class Athlete:
 
     def update_metrics(self, recompute=False):
         metrics = get_all_metrics()
-        metrics.pop(CurveMetric)
-        metrics.pop(MeanMaxMetric)
+        metrics.remove(CurveMetric)
+        metrics.remove(MeanMaxMetric)
         
         metrics = MetricsCalculator.order_deps(list(metrics))
         for activity in self.activities:
