@@ -4,7 +4,7 @@ from time import time
 
 from sports_planner_lib.metrics import *
 from sports_planner_lib.metrics.activity import Curve, MeanMax
-from sports_planner_lib.metrics.zones import TimeInZone, ZoneDefinitions, Zones
+# from sports_planner_lib.metrics.zones import TimeInZone, ZoneDefinitions, Zones
 from sports_planner_lib.utils.logging import debug_time, info_time, logtime
 
 all_metrics = None
