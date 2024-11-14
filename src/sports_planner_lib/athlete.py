@@ -62,7 +62,7 @@ class Athlete:
                         self, activity, activity_file, force=reimport
                     )
 
-    def update_db(self, recompute=False)
+    def update_db(self, recompute=False):
         self.update_meanmaxes(recompute=recompute)
         self.update_metrics(recompute=recompute)
 
