@@ -125,8 +125,7 @@ class Athlete:
                                 )
                             print(f"{metric}: {value}")      
                             session.commit()
-                    except Exception as e:
-                        print(f"{metric}: {e}")
+                    except IntegrityError as e:
                         session.rollback()
 
 
