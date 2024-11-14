@@ -105,7 +105,7 @@ class ActivityDate(ActivityMetric):
         datetime.date
             When the activity started
         """
-        return self.activity.records_df.index[0].date().timestamp()
+        return datetime.combine(self.activity.records_df.index[0], datetime.time()).timestamp()
 
 
 class AverageSpeed(ActivityMetric):
