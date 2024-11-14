@@ -93,6 +93,7 @@ class Athlete:
         metrics = get_all_metrics()
         metrics.remove(CurveMetric)
         metrics.remove(MeanMaxMetric)
+        metrics.remove(Firstbeat)
         
         metrics = MetricsCalculator.order_deps(list(metrics))
         for activity in self.activities:
