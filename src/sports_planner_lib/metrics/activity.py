@@ -436,7 +436,7 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
         float
             The corresponding meanmax value
         """
-        return self.activity.meanmaxes[self.time - 1].getattr(f"mean_max_{self.column}")
+        return getattr(self.activity.meanmaxes[self.time - 1], f"mean_max_{self.column}")
 
 
 class RunningMetric(ActivityMetric, ABC):
