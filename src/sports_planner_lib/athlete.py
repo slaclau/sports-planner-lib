@@ -6,7 +6,7 @@ import sweat
 import yaml
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, joinedload
 
 from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Record
 from sports_planner_lib.importer.garmin import GarminImporter
@@ -96,7 +96,7 @@ class Athlete:
         metrics = MetricsCalculator.order_deps(list(metrics))
         for activity in self.activities:
             with self.Session() as session:
-                activity = session.get(Activity, activity.activity_id)
+                activity = session.get(Activity, activity.activity_id, options=[joinedload(Activity.records)])
                 for metric in metrics:
                     metric_instance = metric(activity)
                     try:
