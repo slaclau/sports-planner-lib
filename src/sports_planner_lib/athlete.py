@@ -12,6 +12,7 @@ from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Recor
 from sports_planner_lib.importer.garmin import GarminImporter
 from sports_planner_lib.metrics.calculate import MetricsCalculator, get_all_metrics
 from sports_planner_lib.metrics.activity import Curve as CurveMetric, MeanMax as MeanMaxMetric
+from sports_planner_lib.metrics.garmin import Firstbeat
 
 logger = logging.getLogger(__name__)
 
