@@ -105,7 +105,7 @@ class Athlete:
                                         activity_id=activity.activity_id,
                                         name=metric.__name__,
                                         value=value,
-                                        json_value=None
+                                        json_value=None,
                                     )
                                 )
                             except TypeError:
@@ -113,7 +113,7 @@ class Athlete:
                                     Metric(
                                         activity_id=activity.activity_id,
                                         name=metric.__name__,
-                                        value=None
+                                        value=None,
                                         json_value=value,
                                     )
                                 )
