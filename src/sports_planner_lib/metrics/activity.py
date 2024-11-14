@@ -59,7 +59,7 @@ class Sport(ActivityMetric):
             `True` if the activity summary contains the key "sport" or the "sport" field
             of the dataframe has a unique value.
         """
-        return len(self.activity.sessions) == 1: 
+        return len(self.activity.sessions) == 1
 
     def compute(self):
         """
