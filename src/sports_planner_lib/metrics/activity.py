@@ -297,7 +297,7 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
         dict
             A dictionary with the keys for each model
         """
-        y = self.meanmaxes_df[f"mean_max_{self.column}"]
+        y = self.activitt.meanmaxes_df[f"mean_max_{self.column}"]
         x = range(1, len(x) + 1)
         X = sweat.array_1d_to_2d(x)
         
