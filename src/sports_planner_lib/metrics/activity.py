@@ -295,66 +295,26 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
         Returns
         -------
         dict
-            A dictionary with the following keys: x, y, and predictions.
-            x and y are the actual calculated values, predictions is a dataframe with
-            columns for different predictions.
+            A dictionary with the keys for each model
         """
-        # data = self.meanmaxes_df[]
-        # x = pc_df.index.total_seconds()
-        # X = sweat.array_1d_to_2d(x)
-        # y = pc_df["mean_max_" + self.column]
-        # data_dict = {}
-        #
-        # try:
-        #     two_param = DurationRegressor(model="2 param")
-        #     two_param.fit(X, y)
-        #     data_dict["2 param"] = two_param.predict(X)
-        # except RuntimeError as e:
-        #     pass
-        # except ValueError as e:
-        #     pass
-        #
-        # try:
-        #     three_param = DurationRegressor(model="3 param")
-        #     three_param.fit(X, y)
-        #     data_dict["3 param"] = three_param.predict(X)
-        # except RuntimeError as e:
-        #     pass
-        # except ValueError as e:
-        #     pass
-        #
-        # try:
-        #     exponential = DurationRegressor(model="exponential")
-        #     exponential.fit(X, y)
-        #     data_dict["exponential"] = exponential.predict(X)
-        # except RuntimeError as e:
-        #     pass
-        # except ValueError as e:
-        #     pass
-        #
-        # try:
-        #     omni = DurationRegressor(model="omni")
-        #     omni.fit(X, y)
-        #     data_dict["omni"] = omni.predict(X)
-        # except RuntimeError as e:
-        #     pass
-        # except ValueError as e:
-        #     pass
-        #
-        # try:
-        #     pt = DurationRegressor(model="pt")
-        #     pt.fit(X, y)
-        #     data_dict["pt"] = pt.predict(X)
-        #     data_dict["ae"] = pt.predict_ae(X)
-        #     data_dict["an"] = pt.predict_an(X)
-        # except RuntimeError as e:
-        #     pass
-        # except ValueError as e:
-        #     pass
-        #
-        # data = pd.DataFrame(data_dict)
-        #
-        # return {"x": x, "y": y, "predictions": data}
+        y = self.meanmaxes_df[f"mean_max_{self.column}"]
+        x = range(1, len(x) + 1)
+        X = sweat.array_1d_to_2d(x)
+        
+        rtn = {}
+        for model in ["2 param", "3 param", "exponential", "omni", "pt"]:
+            try:
+                model_instance = DurationRegressor(model=model)
+                model_instance.fit(X, y)
+                func, params = model_instance._model_selection()
+                rtn[model] = {param: getattr(model_instance, f"{param}_") for param in params}
+ 
+            except RuntimeError as e:
+                pass
+            except ValueError as e:
+                pass
+        print(rtn) 
+        return rtn
 
 
 class MeanMaxMeta(type):
