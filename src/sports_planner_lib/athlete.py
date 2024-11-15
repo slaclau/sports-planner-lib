@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Record
 from sports_planner_lib.importer.garmin import GarminImporter
 from sports_planner_lib.metrics.calculate import MetricsCalculator, get_all_metrics
-from sports_planner_lib.metrics.activity import (
+from sports_planner_lib.metrics.pdm import (
     Curve as CurveMetric,
     MeanMax as MeanMaxMetric,
 )
