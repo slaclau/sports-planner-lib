@@ -79,33 +79,6 @@ class Sport(ActivityMetric):
         return {"sport": "UNKNOWN"}
 
 
-class ActivityDate(ActivityMetric):
-    """The date an activity started."""
-
-    name = "Date"
-    format = "%d-%m-%Y"
-
-    def applicable(self):
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
-
-    def compute(self) -> datetime.date:
-        """
-
-        Returns
-        -------
-        datetime.date
-            When the activity started
-        """
-        return datetime.datetime.combine(self.activity.records_df.index[0], datetime.time()).timestamp()
-
-
 class AverageSpeed(ActivityMetric):
     """The average speed over an activity."""
 
@@ -326,62 +299,62 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
             x and y are the actual calculated values, predictions is a dataframe with
             columns for different predictions.
         """
-        pc_df = self.df.sweat.mean_max(self.column, monotonic=True).dropna()
-        x = pc_df.index.total_seconds()
-        X = sweat.array_1d_to_2d(x)
-        y = pc_df["mean_max_" + self.column]
-        data_dict = {}
-
-        try:
-            two_param = DurationRegressor(model="2 param")
-            two_param.fit(X, y)
-            data_dict["2 param"] = two_param.predict(X)
-        except RuntimeError as e:
-            pass
-        except ValueError as e:
-            pass
-
-        try:
-            three_param = DurationRegressor(model="3 param")
-            three_param.fit(X, y)
-            data_dict["3 param"] = three_param.predict(X)
-        except RuntimeError as e:
-            pass
-        except ValueError as e:
-            pass
-
-        try:
-            exponential = DurationRegressor(model="exponential")
-            exponential.fit(X, y)
-            data_dict["exponential"] = exponential.predict(X)
-        except RuntimeError as e:
-            pass
-        except ValueError as e:
-            pass
-
-        try:
-            omni = DurationRegressor(model="omni")
-            omni.fit(X, y)
-            data_dict["omni"] = omni.predict(X)
-        except RuntimeError as e:
-            pass
-        except ValueError as e:
-            pass
-
-        try:
-            pt = DurationRegressor(model="pt")
-            pt.fit(X, y)
-            data_dict["pt"] = pt.predict(X)
-            data_dict["ae"] = pt.predict_ae(X)
-            data_dict["an"] = pt.predict_an(X)
-        except RuntimeError as e:
-            pass
-        except ValueError as e:
-            pass
-
-        data = pd.DataFrame(data_dict)
-
-        return {"x": x, "y": y, "predictions": data}
+        # data = self.meanmaxes_df[]
+        # x = pc_df.index.total_seconds()
+        # X = sweat.array_1d_to_2d(x)
+        # y = pc_df["mean_max_" + self.column]
+        # data_dict = {}
+        #
+        # try:
+        #     two_param = DurationRegressor(model="2 param")
+        #     two_param.fit(X, y)
+        #     data_dict["2 param"] = two_param.predict(X)
+        # except RuntimeError as e:
+        #     pass
+        # except ValueError as e:
+        #     pass
+        #
+        # try:
+        #     three_param = DurationRegressor(model="3 param")
+        #     three_param.fit(X, y)
+        #     data_dict["3 param"] = three_param.predict(X)
+        # except RuntimeError as e:
+        #     pass
+        # except ValueError as e:
+        #     pass
+        #
+        # try:
+        #     exponential = DurationRegressor(model="exponential")
+        #     exponential.fit(X, y)
+        #     data_dict["exponential"] = exponential.predict(X)
+        # except RuntimeError as e:
+        #     pass
+        # except ValueError as e:
+        #     pass
+        #
+        # try:
+        #     omni = DurationRegressor(model="omni")
+        #     omni.fit(X, y)
+        #     data_dict["omni"] = omni.predict(X)
+        # except RuntimeError as e:
+        #     pass
+        # except ValueError as e:
+        #     pass
+        #
+        # try:
+        #     pt = DurationRegressor(model="pt")
+        #     pt.fit(X, y)
+        #     data_dict["pt"] = pt.predict(X)
+        #     data_dict["ae"] = pt.predict_ae(X)
+        #     data_dict["an"] = pt.predict_an(X)
+        # except RuntimeError as e:
+        #     pass
+        # except ValueError as e:
+        #     pass
+        #
+        # data = pd.DataFrame(data_dict)
+        #
+        # return {"x": x, "y": y, "predictions": data}
 
 
 class MeanMaxMeta(type):
@@ -426,7 +399,7 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
         bool
             `True` if the relevant :class:`Curve` extends for a sufficient duration
         """
-        return self.column in self.df.columns and len(self.df.index) >= time
+        return self.column in self.df.columns and len(self.df.index) >= self.time
 
     def compute(self) -> float:
         """
@@ -436,7 +409,9 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
         float
             The corresponding meanmax value
         """
-        return getattr(self.activity.meanmaxes[self.time - 1], f"mean_max_{self.column}")
+        return float(
+            getattr(self.activity.meanmaxes[self.time - 1], f"mean_max_{self.column}")
+        )
 
 
 class RunningMetric(ActivityMetric, ABC):

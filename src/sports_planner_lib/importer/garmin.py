@@ -106,7 +106,20 @@ class GarminImporter(ActivityImporter):
                 session.add(
                     Activity(
                         activity_id=metadata["activity_id"],
+                        total_timer_time=activity["activity"]["total_timer_time"],
                         timestamp=activity["activity"]["timestamp"],
+                        name=metadata["name"],
+                        source="garmin",
+                        original_file=str(activity_file),
+                    )
+                )
+            elif force:
+                logger.warning(f"Potentially re-importing {metadata["activity_id"]}")
+                session.merge(
+                    Activity(
+                        activity_id=metadata["activity_id"],
+                        timestamp=activity["activity"]["timestamp"],
+                        total_timer_time=activity["activity"]["total_timer_time"],
                         name=metadata["name"],
                         source="garmin",
                         original_file=str(activity_file),
@@ -114,17 +127,6 @@ class GarminImporter(ActivityImporter):
                 )
             else:
                 already_exists = True
-            if force:
-                logger.warning(f"Potentially re-importing {metadata["activity_id"]}")
-                session.merge(
-                    Activity(
-                        activity_id=metadata["activity_id"],
-                        timestamp=activity["activity"]["timestamp"],
-                        name=metadata["name"],
-                        source="garmin",
-                        original_file=str(activity_file),
-                    )
-                )
             session.commit()
         if force or not already_exists:
             self._import_records_df(

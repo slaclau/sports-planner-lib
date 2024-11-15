@@ -4,8 +4,10 @@ from time import time
 
 from sports_planner_lib.metrics import *
 from sports_planner_lib.metrics.activity import Curve, MeanMax
+
 # from sports_planner_lib.metrics.zones import TimeInZone, ZoneDefinitions, Zones
 from sports_planner_lib.utils.logging import debug_time, info_time, logtime
+import pyparsing as pp
 
 all_metrics = None
 metrics_map = None
@@ -39,6 +41,38 @@ def _get_all_subclasses(cls) -> set[type]:
     return set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in _get_all_subclasses(c)]
     )
+
+
+metric_name_grammar = pp.Word(pp.alphas).set_name("class") + pp.Opt(
+    "["
+    + pp.Opt(
+        pp.Group(
+            pp.delimited_list(
+                pp.python_quoted_string.add_parse_action(pp.remove_quotes)
+                | pp.common.real
+                | pp.common.integer,
+                ",",
+            ).set_name("args")
+        )
+    )
+    + "]"
+)
+
+
+def parse_metric_string(name):
+    if metric_name_grammar.matches(name):
+        res = metric_name_grammar.parse_string(name)
+        class_name = res[0]
+
+        metric = get_metrics_map()[class_name]
+        if len(res) == 4:
+            if len(res[2]) == 1:
+                args = [res[2]]
+            else:
+                args = [arg for arg in res[2]]
+            metric = metric[*args]
+        print(f"Returning {metric} for {name}")
+        return metric
 
 
 logger.debug(f"Getting all metrics {get_all_metrics()}")

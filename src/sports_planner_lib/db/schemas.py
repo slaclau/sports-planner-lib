@@ -1,5 +1,6 @@
 import abc
 import datetime
+import logging
 import typing
 from typing import TYPE_CHECKING
 
@@ -15,12 +16,10 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
-from sports_planner_lib.metrics.activity import CurveMeta, MeanMaxMeta
-from sports_planner_lib.metrics.calculate import MetricsCalculator, get_metrics_map
-from sports_planner_lib.metrics.zones import (
-    TimeInZoneMeta,
-    ZoneDefinitionsMeta,
-    ZonesMeta,
+from sports_planner_lib.metrics.calculate import (
+    MetricsCalculator,
+    get_metrics_map,
+    parse_metric_string,
 )
 
 if TYPE_CHECKING:
@@ -137,6 +136,7 @@ class Activity(Base):
 
     activity_id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime.datetime] = mapped_column()
+    total_timer_time: Mapped[float] = mapped_column()
     name: Mapped[str] = mapped_column()
     source: Mapped[str] = mapped_column()
     original_file: Mapped[str] = mapped_column()
@@ -184,7 +184,16 @@ class Activity(Base):
             if metric.name == name:
                 if metric.value is not None:
                     return metric.value
-                return metric.json_value 
+                return metric.json_value
+
+        if name in get_metrics_map():
+            metric = get_metrics_map()[name]
+        else:
+            metric = parse_metric_string(name)
+        if metric is None:
+            logging.error(f"{name} not found")
+        metric_instance = metric(self)
+        return metric_instance.compute()
         print(f"{name} not found")
 
     @property
@@ -201,6 +210,11 @@ class Activity(Base):
     @property
     def sessions_df(self):
         df = pd.DataFrame([vars(session) for session in self.sessions])
+        return df
+
+    @property
+    def meanmaxes_df(self):
+        df = pd.DataFrame([vars(meanmax) for meanmax in self.meanmaxes])
         return df
 
 

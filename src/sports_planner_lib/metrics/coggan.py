@@ -1,8 +1,15 @@
-from sports_planner_lib.metrics.activity import AverageHR, AveragePower, CyclingMetric
+from sports_planner_lib.metrics.activity import (
+    AverageHR,
+    AveragePower,
+    CyclingMetric,
+    TimerTime,
+)
 
 
 class CogganNP(CyclingMetric):
     name = "Normalized power"
+
+    format = ".0f"
 
     def compute(self):
         self.df["power30"] = self.df["power"].rolling(window="30s").mean()
@@ -36,6 +43,8 @@ class CogganIF(CyclingMetric):
 
     deps = CyclingMetric.deps + [CogganNP, CyclingFTP]
 
+    format = ".2f"
+
     def compute(self):
         np = self.get_metric(CogganNP)
         ftp = self.get_metric(CyclingFTP)
@@ -46,13 +55,16 @@ class CogganIF(CyclingMetric):
 class CogganTSS(CyclingMetric):
     name = "Training stress score"
 
-    deps = CyclingMetric.deps + [CogganNP, CyclingFTP]
+    deps = CyclingMetric.deps + [CogganNP, CyclingFTP, TimerTime]
+
+    format = ".1f"
 
     def compute(self):
         np = self.get_metric(CogganNP)
         ftp = self.get_metric(CyclingFTP)
+        ttt = self.get_metric(TimerTime)
 
-        raw = np * np / ftp * self.activity.details["total_timer_time"]
+        raw = np * np / ftp * ttt
 
         normalizing_factor = ftp * 3600
 

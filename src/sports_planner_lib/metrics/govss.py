@@ -164,7 +164,7 @@ class IWF(RunningMetric):
 
 
 class GOVSS(RunningMetric):
-    name = "Gravity orderered velocity stress score"
+    name = "GOVSS"
     format = ".1f"
 
     deps = RunningMetric.deps + [LNP, RTP, TimerTime]

@@ -11,7 +11,10 @@ from sqlalchemy.orm import sessionmaker, joinedload
 from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Record
 from sports_planner_lib.importer.garmin import GarminImporter
 from sports_planner_lib.metrics.calculate import MetricsCalculator, get_all_metrics
-from sports_planner_lib.metrics.activity import Curve as CurveMetric, MeanMax as MeanMaxMetric
+from sports_planner_lib.metrics.activity import (
+    Curve as CurveMetric,
+    MeanMax as MeanMaxMetric,
+)
 from sports_planner_lib.metrics.garmin import Firstbeat
 
 logger = logging.getLogger(__name__)
@@ -49,7 +52,10 @@ class Athlete:
                 activities = importer_obj.list_activities()
                 for activity in activities:
                     with self.Session() as session:
-                        if session.get(Activity, activity["activity_id"]) and not redownload:
+                        if (
+                            session.get(Activity, activity["activity_id"])
+                            and not redownload
+                        ):
                             continue
                     logger.debug(f"Downloading {activity} from {importer}")
                     activity_file = importer_obj.download_activity(
@@ -98,11 +104,15 @@ class Athlete:
         metrics.remove(CurveMetric)
         metrics.remove(MeanMaxMetric)
         metrics.remove(Firstbeat)
-        
+
         metrics = MetricsCalculator.order_deps(list(metrics))
         for activity in self.activities:
             with self.Session() as session:
-                activity = session.get(Activity, activity.activity_id, options=[joinedload(Activity.records)])
+                activity = session.get(
+                    Activity,
+                    activity.activity_id,
+                    options=[joinedload(Activity.records)],
+                )
                 if len(activity.metrics) > 0 and not recompute:
                     continue
                 for metric in metrics:
@@ -131,7 +141,7 @@ class Athlete:
                                         json_value=value,
                                     )
                                 )
-                            print(f"{metric}: {value}")      
+                            print(f"{metric}: {value}")
                             session.commit()
                     except IntegrityError as e:
                         session.rollback()
@@ -142,6 +152,7 @@ if __name__ == "__main__":
     base_logger = logging.getLogger("")
     base_logger.setLevel(logging.DEBUG)
     athlete = Athlete("seb.laclau@gmail.com")
+    athlete.import_activities(reimport=True)
     athlete.update_db(recompute=False)
 
     a = athlete.activities
