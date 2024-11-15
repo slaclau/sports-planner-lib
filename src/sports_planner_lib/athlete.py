@@ -12,7 +12,7 @@ from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Recor
 from sports_planner_lib.importer.garmin import GarminImporter
 from sports_planner_lib.metrics.calculate import MetricsCalculator, get_all_metrics
 from sports_planner_lib.metrics.pdm import (
-    Curve as CurveMetric,
+    Curve,
     MeanMax as MeanMaxMetric,
 )
 from sports_planner_lib.metrics.garmin import Firstbeat
@@ -101,9 +101,17 @@ class Athlete:
 
     def update_metrics(self, recompute=False):
         metrics = get_all_metrics()
-        metrics.remove(CurveMetric)
+        metrics.remove(Curve)
         metrics.remove(MeanMaxMetric)
         metrics.remove(Firstbeat)
+        
+        cols = MeanMax.__table__.columns.keys()
+        cols.pop(cols.index("activity_id"))
+        cols.pop(cols.index("duration"))
+
+        source_cols = [col.replace("mean_max_", "") for col in cols]
+        for col in source_cols:
+            metrics.add(Curve[col]) 
 
         metrics = MetricsCalculator.order_deps(list(metrics))
         for activity in self.activities:

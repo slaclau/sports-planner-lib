@@ -129,7 +129,6 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
                 pass
             except ValueError as e:
                 pass
-        print(rtn) 
         return rtn
 
 
