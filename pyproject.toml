@@ -1,7 +1,7 @@
 [project]
 name = "sports-planner-lib"
 dynamic = ["version", "readme"]
-dependencies = ["numpy<2.0.0", "garth", "fitdecode", "sweat", "pyYAML", "sqlalchemy"]
+dependencies = ["garth>=0.5.1", "numpy<2.0.0", "pandas", "fitdecode", "sweat", "pyYAML", "sqlalchemy"]
 
 [build-system]
 requires = ["setuptools>=64", "setuptools_scm>=8", "setuptools_scm_custom"]
@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 doc = []
-lint = ["black", "isort", "flake8", "flake8-pyproject", "flake8-pylint", "flake8-json", "flake8-bugbear", "mypy", "mypy-json-report", "pygobject-stubs", "deptry"]
+lint = ["black", "isort", "flake8", "flake8-pyproject", "flake8-pylint", "flake8-json", "flake8-bugbear", "mypy", "mypy-json-report", "deptry"]
 test = ["plotly", "pytest", "pytest-cov", "pytest-html"]
 dev = ["sports-planner-lib[doc, lint, test]"]
 

@@ -1,8 +1,11 @@
+import logging
+
 import numpy as np
 
 from sports_planner_lib.metrics.activity import RunningMetric, TimerTime
 from sports_planner_lib.metrics.athlete import Height, Weight
 
+logger = logging.getLogger(__name__)
 
 def calculate_power(weight, height, speed, slope=0.0, distance=0.0, initial_speed=0.0):
     Af = (0.2025 * (height**0.725) * (weight**0.425)) * 0.266
@@ -46,7 +49,10 @@ class LNP(RunningMetric):
         mask = self.df["distance_diff"] < 0.1
         self.df.loc[mask, "distance_diff"] = 0
 
-        self.df["slope"] = self.df["altitude"].diff() / self.df["distance_diff"]
+        try:
+            self.df["slope"] = self.df["altitude"].diff() / self.df["distance_diff"]
+        except TypeError:
+            self.df["slope"] = 0
         self.df["slope"].replace([np.inf, -np.inf], 0, inplace=True)
 
         self.df["d_speed"] = self.df["distance"].diff()

@@ -2,6 +2,8 @@ import numpy as np
 import sweat
 
 from sports_planner_lib.metrics.base import ActivityMetric
+from sports_planner_lib.utils import format
+
 
 class DurationRegressor(sweat.PowerDurationRegressor):
     def __init__(
@@ -116,15 +118,17 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
         y = self.activity.meanmaxes_df[f"mean_max_{self.column}"]
         x = range(1, len(y) + 1)
         X = sweat.array_1d_to_2d(x)
-        
+
         rtn = {}
         for model in ["2 param", "3 param", "exponential", "omni", "pt"]:
             try:
                 model_instance = DurationRegressor(model=model)
                 model_instance.fit(X, y)
                 func, params = model_instance._model_selection()
-                rtn[model] = {param: getattr(model_instance, f"{param}_") for param in params}
- 
+                rtn[model] = {
+                    param: getattr(model_instance, f"{param}_") for param in params
+                }
+
             except RuntimeError as e:
                 pass
             except ValueError as e:

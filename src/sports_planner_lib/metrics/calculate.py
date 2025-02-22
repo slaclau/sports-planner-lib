@@ -2,12 +2,13 @@ import logging
 from graphlib import TopologicalSorter
 from time import time
 
+import pyparsing as pp
+
 from sports_planner_lib.metrics import *
 from sports_planner_lib.metrics.pdm import Curve, MeanMax
 
 # from sports_planner_lib.metrics.zones import TimeInZone, ZoneDefinitions, Zones
 from sports_planner_lib.utils.logging import debug_time, info_time, logtime
-import pyparsing as pp
 
 all_metrics = None
 metrics_map = None
