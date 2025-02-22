@@ -187,6 +187,74 @@ class ThresholdHeartrate(ActivityMetric):
         return 175
 
 
+class DurationRegressor(sweat.PowerDurationRegressor):
+    def __init__(
+        self,
+        model="2 param",
+        cp=300,
+        w_prime=20000,
+        p_max=1000,
+        tau=300,
+        tau2=1800,
+        tcp_max=1800,
+        a=50,
+    ):
+        self.model = model
+        self.cp = cp
+        self.w_prime = w_prime
+        self.p_max = p_max
+        self.tau = tau
+        self.tau2 = tau2
+        self.tcp_max = tcp_max
+        self.a = a
+
+    def _aerobic(self, X, cp, w_prime, tau, tau2, a):
+        t = X.T[0]
+        result = cp * (1 - np.exp(-t / tau2))
+
+        return np.where(
+            t <= self.tcp_max, result, result - a * np.log(t / self.tcp_max)
+        )
+
+    def _anaerobic(self, X, cp, w_prime, tau, tau2, a):
+        t = X.T[0]
+        return w_prime / t * (1 - np.exp(-t / tau))
+
+    def predict_ae(self, X):
+        assert self.model == "pt"
+        _, params = self._model_selection()
+        func = self._aerobic
+
+        args = []
+        for param_name in params:
+            args.append(getattr(self, f"{param_name}_"))
+
+        return func(X, *args)
+
+    def predict_an(self, X):
+        assert self.model == "pt"
+        _, params = self._model_selection()
+        func = self._anaerobic
+
+        args = []
+        for param_name in params:
+            args.append(getattr(self, f"{param_name}_"))
+
+        return func(X, *args)
+
+    def _pt_model(self, X, cp, w_prime, tau, tau2, a):
+        return self._aerobic(X, cp, w_prime, tau, tau2, a) + self._anaerobic(
+            X, cp, w_prime, tau, tau2, a
+        )
+
+    def _model_selection(self):
+        if self.model == "pt":
+            func = self._pt_model
+            params = ["cp", "w_prime", "tau", "tau2", "a"]
+            return func, params
+        return super()._model_selection()
+
+
 class RunningMetric(ActivityMetric, ABC):
     """A base class for running specific metrics."""
 

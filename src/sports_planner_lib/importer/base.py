@@ -38,15 +38,19 @@ class ActivityImporter:
             f"Not importing these columns from records df: {set(records_df) - set(needed_cols)}"
         )
         needed_cols.pop(needed_cols.index("timestamp"))
-        df = records_df[needed_cols]
+
+        cols = set(needed_cols).intersection(records_df.columns)
+        missing_cols = set(needed_cols) - cols
+
+        df = records_df[cols]
         df["timestamp"] = records_df.index
         rows = df.to_dict(orient="records")
         with athlete.Session() as session:
             for row in rows:
                 if force:
-                    session.merge(Record(**row))
+                    session.merge(Record(**row, **{col: None for col in missing_cols}))
                 else:
-                    session.add(Record(**row))
+                    session.add(Record(**row, **{col: None for col in missing_cols}))
             try:
                 session.commit()
             except IntegrityError:
@@ -65,14 +69,17 @@ class ActivityImporter:
             f"Not importing these columns from laps df: {set(laps_df) - set(needed_cols)}"
         )
 
-        df = laps_df[needed_cols]
+        cols = set(needed_cols).intersection(laps_df.columns)
+        missing_cols = set(needed_cols) - cols
+
+        df = laps_df[cols]
         rows = df.to_dict(orient="records")
         with athlete.Session() as session:
             for row in rows:
                 if force:
-                    session.merge(Lap(**row))
+                    session.merge(Lap(**row, **{col: None for col in missing_cols}))
                 else:
-                    session.add(Lap(**row))
+                    session.add(Lap(**row, **{col: None for col in missing_cols}))
             try:
                 session.commit()
             except IntegrityError:

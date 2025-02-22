@@ -9,9 +9,9 @@ def time(seconds):
     rtn = ""
     if hours > 0:
         rtn += f"{hours:d}h"
-    if mins > 0:
-        rtn += f"{mins:d}m"
-    if secs > 0:
-        rtn += f"{secs:d}s"
+    if mins > 0 or (hours > 0 and mins >= 0):
+        rtn += f"{mins:0>2d}m"
+    if secs >= 0:
+        rtn += f"{secs:0>2d}s"
 
     return rtn

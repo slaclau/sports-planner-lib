@@ -37,18 +37,18 @@ class Record(Base):
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
     )
-    latitude: Mapped[float] = mapped_column()
-    longitude: Mapped[float] = mapped_column()
-    distance: Mapped[float] = mapped_column()
-    speed: Mapped[float] = mapped_column()
-    altitude: Mapped[float] = mapped_column()
-    power: Mapped[float] = mapped_column()
+    latitude: Mapped[float | None] = mapped_column()
+    longitude: Mapped[float | None] = mapped_column()
+    distance: Mapped[float | None] = mapped_column()
+    speed: Mapped[float | None] = mapped_column()
+    altitude: Mapped[float | None] = mapped_column()
+    power: Mapped[float | None] = mapped_column()
     vertical_oscillation: Mapped[float | None] = mapped_column()
     stance_time: Mapped[float | None] = mapped_column()
     vertical_ratio: Mapped[float | None] = mapped_column()
     step_length: Mapped[float | None] = mapped_column()
-    heartrate: Mapped[int] = mapped_column()
-    cadence: Mapped[int] = mapped_column()
+    heartrate: Mapped[int | None] = mapped_column()
+    cadence: Mapped[int | None] = mapped_column()
     record_sequence: Mapped[int] = mapped_column()
     accumulated_power: Mapped[float | None] = mapped_column()
     performance_condition: Mapped[int | None] = mapped_column()
@@ -123,10 +123,10 @@ class MeanMax(Base):
     )
     duration: Mapped[int] = mapped_column(primary_key=True)
 
-    mean_max_speed: Mapped[float] = mapped_column()
-    mean_max_power: Mapped[float] = mapped_column()
-    mean_max_heartrate: Mapped[float] = mapped_column()
-    mean_max_cadence: Mapped[float] = mapped_column()
+    mean_max_speed: Mapped[float | None] = mapped_column()
+    mean_max_power: Mapped[float | None] = mapped_column()
+    mean_max_heartrate: Mapped[float | None] = mapped_column()
+    mean_max_cadence: Mapped[float | None] = mapped_column()
 
     activity = relationship("Activity", back_populates="meanmaxes")
 
@@ -199,8 +199,12 @@ class Activity(Base):
     @property
     def records_df(self):
         df = pd.DataFrame([vars(record) for record in self.records])
-        df.index = df["timestamp"]
-        return df
+        try:
+            df.index = df["timestamp"]
+            return df
+        except KeyError:
+            print(df)
+            raise KeyError
 
     @property
     def laps_df(self):

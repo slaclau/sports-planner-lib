@@ -44,7 +44,7 @@ class GarminImporter(ActivityImporter):
 
         url = "/activitylist-service/activities/search/activities"
         start = 0
-        limit = 5
+        limit = 10
 
         params = {"start": str(start), "limit": str(limit)}
 
