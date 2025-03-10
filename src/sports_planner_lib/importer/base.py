@@ -41,6 +41,7 @@ class ActivityImporter:
 
         cols = set(needed_cols).intersection(records_df.columns)
         missing_cols = set(needed_cols) - cols
+        cols = list(cols)
 
         df = records_df[cols]
         df["timestamp"] = records_df.index
@@ -71,6 +72,7 @@ class ActivityImporter:
 
         cols = set(needed_cols).intersection(laps_df.columns)
         missing_cols = set(needed_cols) - cols
+        cols = list(cols)
 
         df = laps_df[cols]
         rows = df.to_dict(orient="records")

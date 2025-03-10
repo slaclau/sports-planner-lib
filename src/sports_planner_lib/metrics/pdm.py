@@ -95,6 +95,8 @@ class CurveMeta(type):
 class Curve(ActivityMetric, metaclass=CurveMeta):
     """A curve showing the maximum durations for different values."""
 
+    format = ".1f"
+
     column: str  #: The column of the dataframe to compute the curve for
 
     def applicable(self):

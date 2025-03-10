@@ -44,19 +44,34 @@ def _get_all_subclasses(cls) -> set[type]:
     )
 
 
-metric_name_grammar = pp.Word(pp.alphas).set_name("class") + pp.Opt(
-    "["
+metric_name_grammar = (
+    pp.Word(pp.alphanums).set_name("class")
     + pp.Opt(
-        pp.Group(
-            pp.delimited_list(
-                pp.python_quoted_string.add_parse_action(pp.remove_quotes)
-                | pp.common.real
-                | pp.common.integer,
-                ",",
-            ).set_name("args")
+        "["
+        + pp.Opt(
+            pp.Group(
+                pp.delimited_list(
+                    pp.python_quoted_string.add_parse_action(pp.remove_quotes)
+                    | pp.common.real
+                    | pp.common.integer,
+                    ",",
+                ).set_name("args")
+            )
         )
+        + "]"
     )
-    + "]"
+    + pp.Opt(
+        "["
+        + pp.Opt(
+            pp.Group(
+                pp.delimited_list(
+                    pp.python_quoted_string | pp.common.real | pp.common.integer,
+                    ",",
+                ).set_name("fields")
+            )
+        )
+        + "]"
+    )
 )
 
 
@@ -66,14 +81,17 @@ def parse_metric_string(name):
         class_name = res[0]
 
         metric = get_metrics_map()[class_name]
-        if len(res) == 4:
-            if len(res[2]) == 1:
-                args = [res[2]]
+        fields = []
+        if len(res) >= 4:
+            args = [arg for arg in res[2]]
+            if len(args) == 1:
+                metric = metric[args[0]]
             else:
-                args = [arg for arg in res[2]]
-            metric = metric[*args]
-        print(f"Returning {metric} for {name}")
-        return metric
+                metric = metric[*args]
+            if len(res) == 7:
+                fields = [arg for arg in res[5]]
+        return metric, fields
+    return None, []
 
 
 logger.debug(f"Getting all metrics {get_all_metrics()}")

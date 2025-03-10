@@ -1,7 +1,7 @@
 [project]
 name = "sports-planner-lib"
 dynamic = ["version", "readme"]
-dependencies = ["garth>=0.5.1", "numpy<2.0.0", "pandas", "fitdecode", "sweat@git+https://github.com/slaclau/sweatpy", "pyYAML", "sqlalchemy"]
+dependencies = ["garth>=0.5.1", "numpy", "pandas", "fitdecode", "sweat@git+https://github.com/slaclau/sweatpy", "pyYAML", "sqlalchemy"]
 
 [build-system]
 requires = ["setuptools>=64", "setuptools_scm>=8", "setuptools_scm_custom"]

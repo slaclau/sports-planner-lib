@@ -7,6 +7,7 @@ from sports_planner_lib.metrics.athlete import Height, Weight
 
 logger = logging.getLogger(__name__)
 
+
 def calculate_power(weight, height, speed, slope=0.0, distance=0.0, initial_speed=0.0):
     Af = (0.2025 * (height**0.725) * (weight**0.425)) * 0.266
     cAero = 0.5 * 1.2 * 0.9 * Af * speed * speed / weight

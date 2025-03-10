@@ -44,7 +44,7 @@ class GarminImporter(ActivityImporter):
 
         url = "/activitylist-service/activities/search/activities"
         start = 0
-        limit = 10
+        limit = 25
 
         params = {"start": str(start), "limit": str(limit)}
 
@@ -74,7 +74,7 @@ class GarminImporter(ActivityImporter):
         url = f"/download-service/files/activity/{activity_id}"
 
         zip_path = target_dir / f"{activity_id}.zip"
-        if force or not os.path.isfile(zip_path):
+        if force or not os.path.isfile(zip_path) or not zipfile.is_zipfile(zip_path):
             with open(zip_path, "wb+") as f:
                 file = garth.download(url)
                 f.write(file)

@@ -1,12 +1,14 @@
 import logging
 import pathlib
+import time
 
 import pandas as pd
 import sweat
 import yaml
+from matplotlib.style.core import available
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload, sessionmaker
+from sqlalchemy.orm import selectinload, sessionmaker
 
 from sports_planner_lib.db.schemas import Activity, Base, MeanMax, Metric, Record
 from sports_planner_lib.importer.garmin import GarminImporter
@@ -39,7 +41,7 @@ class Athlete:
     def activities(self):
         with self.Session() as session:
             activities = (
-                session.query(Activity).options([joinedload(Activity.metrics)]).all()
+                session.query(Activity).options([selectinload(Activity.metrics)]).all()
             )
             return activities
 
@@ -50,13 +52,22 @@ class Athlete:
 
     def get_activity_full(self, activity):
         with self.Session() as session:
-            return session.get(Activity, activity.activity_id, options=[joinedload(Activity.records), joinedload(Activity.laps), joinedload(Activity.sessions)])
+            return session.get(
+                Activity,
+                activity.activity_id,
+                options=[
+                    selectinload(Activity.records),
+                    selectinload(Activity.laps),
+                    selectinload(Activity.sessions),
+                    selectinload(Activity.metrics),
+                ],
+            )
 
     def import_activities(self, redownload=False, reimport=False):
         importers = {"garmin": GarminImporter}
         for importer in self.config["importers"]:
             if "activities" in self.config["importers"][importer]["roles"]:
-                logger.debug(f"Getting activities from {importer}")
+                logger.info(f"Getting activities from {importer}")
                 importer_obj = importers[importer](self.config["importers"][importer])
                 activities = importer_obj.list_activities()
                 i = 0
@@ -69,7 +80,10 @@ class Athlete:
                             and not redownload
                         ):
                             continue
-                    logger.debug(f"Downloading {activity} from {importer}", extra=dict(action="download", activity=activity, i=i, n=n))
+                    logger.info(
+                        f"Downloading {activity} from {importer}",
+                        extra=dict(action="download", activity=activity, i=i, n=n),
+                    )
                     activity_file = importer_obj.download_activity(
                         activity["activity_id"],
                         self.dir / "downloaded_activities",
@@ -81,7 +95,7 @@ class Athlete:
                     )
 
     def update_db(self, recompute=False):
-        logger.debug("Updating database")
+        logger.info("Updating database")
         self.update_meanmaxes(recompute=recompute)
         self.update_metrics(recompute=recompute)
 
@@ -99,8 +113,23 @@ class Athlete:
                 activity = session.get(Activity, activity.activity_id)
                 if len(activity.meanmaxes) > 0 and not recompute:
                     continue
-                logger.debug(f"Getting mean max values for {activity.activity_id}", extra=dict(action="get_meanmaxes", activity=activity, i=i, n=n))
-                df = activity.records_df.sweat.mean_max(source_cols)
+                logger.info(
+                    f"Getting mean max values for {activity.activity_id}",
+                    extra=dict(action="get_meanmaxes", activity=activity, i=i, n=n),
+                )
+                time_now = time.time()
+                records_df = activity.records_df
+                available_cols = [
+                    k
+                    for k, v in records_df[source_cols].isnull().all().items()
+                    if not v
+                ]
+                unused_cols = [
+                    k for k, v in records_df[source_cols].isnull().all().items() if v
+                ]
+                logger.debug(f"Using {available_cols} of {source_cols}")
+                df = records_df.sweat.mean_max(available_cols)
+                df[["mean_max_" + col for col in unused_cols]] = None
                 df["duration"] = df.index.total_seconds()
                 rows = df.to_dict(orient="records")
                 for row in rows:
@@ -112,6 +141,7 @@ class Athlete:
                     session.commit()
                 except IntegrityError:
                     pass
+                logger.debug(f"Took {time.time() - time_now:0.2f} s")
 
     def update_metrics(self, recompute=False):
         metrics = get_all_metrics()
@@ -128,6 +158,8 @@ class Athlete:
             metrics.add(Curve[col])
 
         metrics = MetricsCalculator.order_deps(list(metrics))
+        logger.debug(f"metrics: {[metric.__name__ for metric in metrics]}")
+
         i = 0
         n = len(self.activities)
         for activity in self.activities:
@@ -138,11 +170,14 @@ class Athlete:
                     activity.activity_id,
                     options=[joinedload(Activity.records)],
                 )
-                if len(activity.metrics) > 0 and not recompute:
-                    continue
-                logger.debug(f"computing metrics for {activity.activity_id}", extra=dict(action="compute_metrics", activity=activity, i=i, n=n))
-
+                logger.info(
+                    f"computing metrics for {activity.activity_id}",
+                    extra=dict(action="compute_metrics", activity=activity, i=i, n=n),
+                )
+                existing_metrics = [metric.name for metric in activity.metrics]
                 for metric in metrics:
+                    if metric.__name__ in existing_metrics and not recompute:
+                        continue
                     metric_instance = metric(activity)
                     try:
                         if metric_instance.applicable():
@@ -151,7 +186,7 @@ class Athlete:
                                 continue
                             try:
                                 value = float(value)
-                                session.add(
+                                session.merge(
                                     Metric(
                                         activity_id=activity.activity_id,
                                         name=metric.__name__,
@@ -160,7 +195,7 @@ class Athlete:
                                     )
                                 )
                             except TypeError:
-                                session.add(
+                                session.merge(
                                     Metric(
                                         activity_id=activity.activity_id,
                                         name=metric.__name__,

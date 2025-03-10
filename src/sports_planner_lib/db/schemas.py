@@ -25,6 +25,8 @@ from sports_planner_lib.metrics.calculate import (
 if TYPE_CHECKING:
     from sports_planner_lib.athlete import Athlete
 
+logger = logging.getLogger(__name__)
+
 
 class Base(MappedAsDataclass, DeclarativeBase):
     pass
@@ -178,6 +180,7 @@ class Activity(Base):
     )
 
     def get_metric(self, name):
+        logger.debug(f"getting {name} for {self.activity_id}")
         if isinstance(name, type):
             name = name.__name__
         for metric in self.metrics:
@@ -188,23 +191,38 @@ class Activity(Base):
 
         if name in get_metrics_map():
             metric = get_metrics_map()[name]
+            fields = []
         else:
-            metric = parse_metric_string(name)
+            metric, fields = parse_metric_string(name)
+
         if metric is None:
-            logging.error(f"{name} not found")
+            logger.error(f"{name} not found")
         metric_instance = metric(self)
-        return metric_instance.compute()
-        print(f"{name} not found")
+        if not metric_instance.get_applicable():
+            logger.debug(f"{name} is not applicable")
+            return None
+        value = metric_instance.compute()
+        for field in fields:
+            try:
+                value = value[field]
+            except KeyError:
+                value = None
+                break
+        return value
+
+    _records_df = None
 
     @property
     def records_df(self):
-        df = pd.DataFrame([vars(record) for record in self.records])
-        try:
-            df.index = df["timestamp"]
-            return df
-        except KeyError:
-            print(df)
-            raise KeyError
+        if self._records_df is None:
+            df = pd.DataFrame([vars(record) for record in self.records])
+            try:
+                df.index = df["timestamp"]
+                self._records_df = df
+            except KeyError:
+                print(df)
+                raise KeyError
+        return self._records_df
 
     @property
     def laps_df(self):

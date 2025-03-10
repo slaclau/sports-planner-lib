@@ -36,7 +36,7 @@ class TimerTime(ActivityMetric):
             The number of seconds
         """
         try:
-            return typing.cast(int, self.activity.details["total_timer_time"])
+            return typing.cast(int, self.activity.total_timer_time)
         except AttributeError:
             pass
         except TypeError:
@@ -59,7 +59,7 @@ class Sport(ActivityMetric):
             `True` if the activity summary contains the key "sport" or the "sport" field
             of the dataframe has a unique value.
         """
-        return len(self.activity.sessions) == 1
+        return True
 
     def compute(self):
         """
