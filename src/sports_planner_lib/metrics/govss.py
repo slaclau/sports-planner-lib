@@ -35,7 +35,7 @@ def calculate_power(weight, height, speed, slope=0.0, distance=0.0, initial_spee
 class LNP(RunningMetric):
     name = "Lactate normalized power"
     unit = "W"
-    format = ".0f"
+    format_string = ".0f"
 
     deps = RunningMetric.deps + [Height, Weight]
 
@@ -54,7 +54,7 @@ class LNP(RunningMetric):
             self.df["slope"] = self.df["altitude"].diff() / self.df["distance_diff"]
         except TypeError:
             self.df["slope"] = 0
-        self.df["slope"].replace([np.inf, -np.inf], 0, inplace=True)
+        self.df["slope"] = self.df["slope"].replace([np.inf, -np.inf], 0)
 
         self.df["d_speed"] = self.df["distance"].diff()
 
@@ -100,7 +100,7 @@ class LNP(RunningMetric):
 class XPace(RunningMetric):
     name = "xPace"
     unit = "m/s"
-    format = ".2f"
+    format_string = ".2f"
 
     deps = RunningMetric.deps + [Height, Weight, LNP]
 
@@ -135,7 +135,7 @@ class XPace(RunningMetric):
 class CV(RunningMetric):
     name = "Critical velocity"
     unit = "m/s"
-    format = ".2f"
+    format_string = ".2f"
 
     def compute(self):
         return 3.3333
@@ -144,7 +144,7 @@ class CV(RunningMetric):
 class RTP(RunningMetric):
     name = "Running threshold power"
     unit = "W"
-    format = ".2f"
+    format_string = ".2f"
 
     deps = RunningMetric.deps + [Height, Weight, CV]
 
@@ -159,7 +159,7 @@ class RTP(RunningMetric):
 
 class IWF(RunningMetric):
     name = "Intensity weighting factor"
-    format = ".2f"
+    format_string = ".2f"
 
     deps = RunningMetric.deps + [LNP, RTP]
 
@@ -172,7 +172,7 @@ class IWF(RunningMetric):
 
 class GOVSS(RunningMetric):
     name = "GOVSS"
-    format = ".1f"
+    format_string = ".1f"
 
     deps = RunningMetric.deps + [LNP, RTP, TimerTime]
 

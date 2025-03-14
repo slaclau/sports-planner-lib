@@ -12,11 +12,42 @@ from sports_planner_lib.metrics.base import ActivityMetric
 from sports_planner_lib.utils import format  # pylint: disable=W0622
 
 
+class ActivityDate(ActivityMetric):
+    """The total time during which the timer is running during an activity."""
+
+    name = "Date"
+
+    def applicable(self) -> bool:
+        """
+
+        Returns
+        -------
+        bool
+            Always `True`
+        """
+        return True
+
+    def compute(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The number of seconds
+        """
+        try:
+            ts = self.activity.timestamp
+            return datetime.datetime.fromtimestamp(ts.total_seconds()).date()
+        except AttributeError:
+            pass
+        except TypeError:
+            pass
+        return self.activity.records_df.index[0].date()
+
+
 class TimerTime(ActivityMetric):
     """The total time during which the timer is running during an activity."""
 
-    name = "Total timer time"
-    unit = "s"
+    name = "Total time"
 
     def applicable(self) -> bool:
         """
@@ -44,6 +75,184 @@ class TimerTime(ActivityMetric):
         return typing.cast(
             int, self.activity.records_df.index[-1] - self.activity.records_df.index[0]
         ).total_seconds()
+
+    @classmethod
+    def _format(cls, value):
+        return format.time(value)
+
+
+class ElapsedTime(ActivityMetric):
+    """The total time between the start and end of an activity."""
+
+    name = "Elapsed time"
+
+    def applicable(self) -> bool:
+        """
+
+        Returns
+        -------
+        bool
+            Always `True`
+        """
+        return True
+
+    def compute(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The number of seconds
+        """
+        return typing.cast(
+            int, self.activity.records_df.index[-1] - self.activity.records_df.index[0]
+        ).total_seconds()
+
+    @classmethod
+    def _format(cls, value):
+        return format.time(value)
+
+
+class MovingTime(ActivityMetric):
+    """The total moving time in an activity."""
+
+    name = "Moving time"
+
+    def applicable(self) -> bool:
+        """
+
+        Returns
+        -------
+        bool
+            Always `True`
+        """
+        return True
+
+    def compute(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The number of seconds
+        """
+        return self.activity.records_df.speed[
+            self.activity.records_df.speed > 0
+        ].count()
+
+    @classmethod
+    def _format(cls, value):
+        return format.time(value)
+
+
+class TotalAscent(ActivityMetric):
+    """The total ascent in an activity."""
+
+    name = "Ascent"
+    unit = "m"
+
+    format_string = ".0f"
+
+    def applicable(self) -> bool:
+        """
+
+        Returns
+        -------
+        bool
+            Always `True`
+        """
+        return True
+
+    def compute(self):
+        """
+        Returns
+        -------
+        int
+            The elevation gain in metres
+        """
+        first = True
+        hysteresis = 3
+        ascent = 0
+        for point in self.activity.records_df.altitude:
+            if first:
+                previous = point
+                first = False
+            if point > previous + hysteresis:
+                ascent += point - previous
+                previous = point
+            elif point < previous - hysteresis:
+                previous = point
+
+        return ascent
+
+
+class TotalDescent(ActivityMetric):
+    """The total descent in an activity."""
+
+    name = "Descent"
+    unit = "m"
+
+    format_string = ".0f"
+
+    def applicable(self) -> bool:
+        """
+
+        Returns
+        -------
+        bool
+            Always `True`
+        """
+        return True
+
+    def compute(self):
+        """
+        Returns
+        -------
+        int
+            The elevation loss in metres
+        """
+        first = True
+        hysteresis = 3
+        descent = 0
+        for point in self.activity.records_df.altitude:
+            if first:
+                previous = point
+                first = False
+            if point < previous - hysteresis:
+                descent += previous - point
+                previous = point
+            elif point > previous + hysteresis:
+                previous = point
+
+        return descent
+
+
+class TotalDistance(ActivityMetric):
+    """The total distance travelled in an activity."""
+
+    name = "Total distance"
+    unit = "km"
+
+    def applicable(self) -> bool:
+        """
+
+        Returns
+        -------
+        bool
+            Always `True`
+        """
+        return True
+
+    def compute(self) -> int:
+        """
+        Returns
+        -------
+        int
+            The distance in metres
+        """
+        return self.activity.records_df.distance.iloc[-1]
+
+    @classmethod
+    def _format(cls, value):
+        return f"{value/1000:0.2f}"
 
 
 class Sport(ActivityMetric):
@@ -78,13 +287,20 @@ class Sport(ActivityMetric):
             }
         return {"sport": "UNKNOWN"}
 
+    @classmethod
+    def _format(cls, value):
+        if "name" in value:
+            return value["name"].title()
+        else:
+            return value["sport"].title()
+
 
 class AverageSpeed(ActivityMetric):
     """The average speed over an activity."""
 
     name = "Average speed"
     unit = "m/s"
-    format = ".2f"
+    format_string = ".2f"
 
     deps = [TimerTime]
 
@@ -109,7 +325,7 @@ class AverageSpeed(ActivityMetric):
             The average speed (total distance divided by :class:`TimerTime`
         """
         time = self.get_metric(TimerTime)
-        return self.df["distance"][-1] / time
+        return self.df["distance"].iloc[-1] / time
 
 
 class AveragePower(ActivityMetric):
@@ -117,7 +333,7 @@ class AveragePower(ActivityMetric):
 
     name = "Average power"
     unit = "W"
-    format = ".0f"
+    format_string = ".0f"
 
     def applicable(self):
         """
@@ -147,7 +363,7 @@ class AverageHR(ActivityMetric):
 
     name = "Average heart rate"
     unit = "bpm"
-    format = ".0f"
+    format_string = ".0f"
 
     def applicable(self):
         """
@@ -175,7 +391,7 @@ class AverageHR(ActivityMetric):
 class ThresholdHeartrate(ActivityMetric):
     name = "Lactate threshold heart rate"
     unit = "bpm"
-    format = ".0f"
+    format_string = ".0f"
     deps = [Sport]
 
     def compute(self):

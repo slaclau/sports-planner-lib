@@ -28,7 +28,7 @@ class Metric:
     #: Any metrics depended on by the metric
     deps: list = []
     #: The format string for the metric
-    format = ""
+    format_string = ""
     #: The unit for the metric
     unit = ""
     #: When the method of calculating the metric was last changed
@@ -92,6 +92,20 @@ class Metric:
             The metric to add as a dependency
         """
         self.deps.append(dep)
+
+    @classmethod
+    def _format(cls, value):
+        """Converts this to a string.
+
+        Returns
+        -------
+        str
+        """
+        return f"{value:{cls.format_string}}"
+
+    @classmethod
+    def format(cls, value):
+        return cls.name, cls._format(value), cls.unit
 
 
 class ActivityMetric(Metric):

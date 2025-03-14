@@ -14,7 +14,6 @@ all_metrics = None
 metrics_map = None
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 def get_all_metrics() -> set[type[base.Metric]]:
@@ -84,12 +83,17 @@ def parse_metric_string(name):
         fields = []
         if len(res) >= 4:
             args = [arg for arg in res[2]]
-            if len(args) == 1:
-                metric = metric[args[0]]
-            else:
-                metric = metric[*args]
-            if len(res) == 7:
-                fields = [arg for arg in res[5]]
+            try:
+                if len(args) == 1 and args[0] == "":
+                    pass
+                elif len(args) == 1:
+                    metric = metric[args[0]]
+                else:
+                    metric = metric[*args]
+                if len(res) == 7:
+                    fields = [arg for arg in res[5]]
+            except TypeError:
+                fields = args
         return metric, fields
     return None, []
 

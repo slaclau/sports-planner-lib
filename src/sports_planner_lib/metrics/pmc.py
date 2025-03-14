@@ -12,7 +12,7 @@ from sports_planner_lib.utils.logging import debug_time, info_time
 
 class UniversalStressScore(ActivityMetric):
     name = "Universal stress score"
-    format = ".1f"
+    format_string = ".1f"
 
     def applicable(self):
         return True

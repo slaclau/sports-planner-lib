@@ -15,6 +15,7 @@ from sqlalchemy.orm import (
     relationship,
     sessionmaker,
 )
+from sqlalchemy_history import make_versioned
 
 from sports_planner_lib.metrics.calculate import (
     MetricsCalculator,
@@ -34,6 +35,7 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
 class Record(Base):
     __tablename__ = "records"
+    __versioned__ = {}
 
     timestamp: Mapped[datetime.datetime] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -59,6 +61,7 @@ class Record(Base):
 
 class Lap(Base):
     __tablename__ = "laps"
+    __versioned__ = {}
 
     index: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -79,6 +82,7 @@ class Lap(Base):
 
 class Session(Base):
     __tablename__ = "sessions"
+    __versioned__ = {}
 
     index: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -93,6 +97,7 @@ class Session(Base):
 
 class UnknownMessage(Base):
     __tablename__ = "unknown_messages"
+    __versioned__ = {}
 
     id = mapped_column(Integer, primary_key=True, autoincrement=True)
     activity_id: Mapped[int] = mapped_column(ForeignKey("activities.activity_id"))
@@ -106,6 +111,7 @@ class UnknownMessage(Base):
 
 class Metric(Base):
     __tablename__ = "metrics"
+    __versioned__ = {}
 
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
@@ -119,6 +125,7 @@ class Metric(Base):
 
 class MeanMax(Base):
     __tablename__ = "meanmaxes"
+    __versioned__ = {}
 
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
@@ -135,6 +142,7 @@ class MeanMax(Base):
 
 class Activity(Base):
     __tablename__ = "activities"
+    __versioned__ = {}
 
     activity_id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime.datetime] = mapped_column()
@@ -197,6 +205,7 @@ class Activity(Base):
 
         if metric is None:
             logger.error(f"{name} not found")
+            return
         metric_instance = metric(self)
         if not metric_instance.get_applicable():
             logger.debug(f"{name} is not applicable")
@@ -246,3 +255,4 @@ if __name__ == "__main__":
     )
     Session = sessionmaker(bind=engine)
     Base.metadata.create_all(engine)
+    make_versioned(user_cls=None)

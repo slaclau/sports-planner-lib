@@ -86,9 +86,9 @@ class GarminImporter(ActivityImporter):
             activity_file = zip_ref.namelist()[0]
             if force or not os.path.isfile(target_dir / activity_file):
                 zip_ref.extractall(target_dir)
-                logging.debug(f"Extracted {activity_file}")
+                logger.debug(f"Extracted {activity_file}")
             else:
-                logging.debug(f"{activity_file} already exists")
+                logger.debug(f"{activity_file} already exists")
         return target_dir / activity_file
 
     def import_activity(

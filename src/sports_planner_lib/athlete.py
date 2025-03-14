@@ -60,6 +60,8 @@ class Athlete:
                     selectinload(Activity.laps),
                     selectinload(Activity.sessions),
                     selectinload(Activity.metrics),
+                    selectinload(Activity.unknown_messages),
+                    selectinload(Activity.meanmaxes),
                 ],
             )
 
@@ -168,7 +170,7 @@ class Athlete:
                 activity = session.get(
                     Activity,
                     activity.activity_id,
-                    options=[joinedload(Activity.records)],
+                    options=[selectinload(Activity.records)],
                 )
                 logger.info(
                     f"computing metrics for {activity.activity_id}",
