@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os.path
 import pathlib
@@ -7,9 +8,18 @@ import zipfile
 import garth
 import sweat
 import yaml
+from dateutil import rrule
 from garth.exc import GarthException
+from matplotlib.style.core import available
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError, StatementError
 
-from sports_planner_lib.db.schemas import Activity, UnknownMessage
+from sports_planner_lib.db.other import ConfiguredValue
+from sports_planner_lib.db.schemas import (
+    Activity,
+    Record,
+    UnknownMessage,
+)
 from sports_planner_lib.importer.base import ActivityImporter, LoginException
 from sports_planner_lib.utils.serial import serialize_dict
 
@@ -24,6 +34,8 @@ class GarminImporter(ActivityImporter):
     message_type_map = {140: "firstbeat"}
 
     def __init__(self, params: dict):
+        self.file_readers[".fit"] = self._read_fit_file
+
         email = params["email"]
         password = params["password"] if "password" in params else None
         try:
@@ -44,18 +56,46 @@ class GarminImporter(ActivityImporter):
 
         url = "/activitylist-service/activities/search/activities"
         start = 0
-        limit = 25
+        limit = 100
 
+        rtn = []
+
+        while True:
+            activities = self._list_activities(start, limit)
+            rtn = rtn + activities
+            start = start + limit
+            if len(activities) == 0:
+                break
+
+        return rtn
+
+    def _list_activities(self, start, limit):
+        url = "/activitylist-service/activities/search/activities"
         params = {"start": str(start), "limit": str(limit)}
+        logger.debug(f"calling api with {params}")
 
-        return [
-            {
-                "activity_id": activity["activityId"],
-                "name": activity["activityName"],
-                "orig": activity,
-            }
-            for activity in garth.connectapi(url, params=params)
-        ]
+        response = garth.connectapi(url, params=params)
+
+        rtn = []
+
+        for activity in response:
+            try:
+                rtn.append(
+                    {
+                        "activity_id": activity["activityId"],
+                        "name": (
+                            activity["activityName"]
+                            if "activityName" in activity
+                            else "Untitled"
+                        ),
+                        "orig": activity,
+                    }
+                )
+            except KeyError:
+                print(activity)
+                raise ValueError
+
+        return rtn
 
     def download_activity(
         self, activity_id: int, target_dir: pathlib.Path, force=False
@@ -98,31 +138,35 @@ class GarminImporter(ActivityImporter):
         activity_file: pathlib.Path,
         force=False,
     ):
-        activity = self._read_fit_file(activity_file)
+        activity = self._read_file(activity_file)
+        if activity == {}:
+            logger.warning(f"unable to import {activity_file}")
+            return
         already_exists = False
+        needed_cols = Record.__table__.columns.keys()
+        needed_cols.pop(needed_cols.index("timestamp"))
+
+        available_columns = list(
+            set(needed_cols).intersection(activity["data"].columns)
+        )
+
         with athlete.Session() as session:
-            if not session.get(Activity, metadata["activity_id"]):
+            if force or not session.get(Activity, metadata["activity_id"]):
                 logger.info(f"Importing {metadata["activity_id"]} from {activity_file}")
-                session.add(
-                    Activity(
-                        activity_id=metadata["activity_id"],
-                        total_timer_time=activity["activity"]["total_timer_time"],
-                        timestamp=activity["activity"]["timestamp"],
-                        name=metadata["name"],
-                        source="garmin",
-                        original_file=str(activity_file),
+                if activity["activity"]["timestamp"] is None:
+                    logger.error(
+                        f"not importing activity {metadata["activity_id"]} with no timestamp"
                     )
-                )
-            elif force:
-                logger.warning(f"Potentially re-importing {metadata["activity_id"]}")
+                    return
                 session.merge(
                     Activity(
                         activity_id=metadata["activity_id"],
-                        timestamp=activity["activity"]["timestamp"],
                         total_timer_time=activity["activity"]["total_timer_time"],
+                        timestamp=activity["activity"]["timestamp"],
                         name=metadata["name"],
                         source="garmin",
                         original_file=str(activity_file),
+                        available_columns=available_columns,
                     )
                 )
             else:
@@ -130,19 +174,28 @@ class GarminImporter(ActivityImporter):
             session.commit()
         if force or not already_exists:
             self._import_records_df(
-                athlete, metadata["activity_id"], activity["data"], force=force
+                athlete,
+                metadata["activity_id"],
+                activity["data"],
+                force=force == True or "records" in force,
             )
             self._import_laps_df(
-                athlete, metadata["activity_id"], activity["laps"], force=force
+                athlete,
+                metadata["activity_id"],
+                activity["laps"],
+                force=force == True or "laps" in force,
             )
             self._import_sessions_df(
-                athlete, metadata["activity_id"], activity["sessions"], force=force
+                athlete,
+                metadata["activity_id"],
+                activity["sessions"],
+                force=force == True or "sessions" in force,
             )
             self._import_unknown_messages(
                 athlete,
                 metadata["activity_id"],
                 activity["unknown_messages"],
-                force=force,
+                force=force == True or "unknowns" in force,
             )
 
     def _import_unknown_messages(
@@ -152,9 +205,17 @@ class GarminImporter(ActivityImporter):
         unknown_messages: list[dict[str, str | dict[str, str | float | int]]],
         force=False,
     ):
+        logger.debug(f"importing unknown messages from {activity_id}")
         with athlete.Session() as session:
             for unknown_message in unknown_messages:
                 message_type = unknown_message["type"]
+                if message_type not in [
+                    "firstbeat",
+                    "device_info",
+                    "workout",
+                    "workout_step",
+                ]:
+                    continue
                 record = unknown_message["record"]
                 if "timestamp" in record:
                     timestamp = record.pop("timestamp")
@@ -183,6 +244,8 @@ class GarminImporter(ActivityImporter):
                 session.commit()
             except IntegrityError:
                 pass
+            except StatementError:
+                pass
 
     @staticmethod
     def _read_fit_file(activity_file: pathlib.Path) -> dict:
@@ -196,7 +259,7 @@ class GarminImporter(ActivityImporter):
                 unknown_messages=True,
             )
         else:
-            raise RuntimeError("Invalid file type")
+            raise RuntimeError(f"Invalid file type: {activity_file.suffix}")
         res["data"] = GarminImporter.standardize_df(
             res["data"], column_name_map=GarminImporter.records_column_name_map
         )
@@ -237,12 +300,78 @@ class GarminImporter(ActivityImporter):
 
         return df
 
+    def _get_biometric_history(
+        self, athlete: "Athlete", field: str, start=None, end=None
+    ):
+        fieldmap = {
+            "ftp": "functionalThresholdPower",
+            "ltp": "lactateThresholdSpeed",
+            "lthr": "lactateThresholdHeartRate",
+        }
+        suffix = ""
+        if field == "ltp":
+            suffix = "&sport=RUNNING"
+        if start is None:
+            with athlete.Session() as session:
+                start = session.query(func.min(Activity.timestamp)).first()[0].date()
+
+        if end is None:
+            end = datetime.date.today()
+
+        rtn = []
+        for dt in rrule.rrule(rrule.YEARLY, dtstart=start, until=end):
+            dt_end = min(end, dt.date() + datetime.timedelta(days=365))
+            rtn += garth.connectapi(
+                f"/biometric-service/stats/{fieldmap[field]}/range/{dt.date()}/{dt_end}?aggregation=daily"
+                + suffix
+            )
+
+        return rtn
+
+    def sync_biometric_history(self, athlete: "Athlete", field: str):
+        biometrics = self._get_biometric_history(
+            athlete, field, None, datetime.date.today()
+        )
+
+        with athlete.Session() as session:
+            for biometric in biometrics:
+                dt = datetime.datetime.strptime(biometric["from"], "%Y-%m-%d")
+
+                if not session.get(
+                    ConfiguredValue,
+                    (
+                        field,
+                        biometric["series"],
+                        dt,
+                    ),
+                ):
+                    session.add(
+                        ConfiguredValue(
+                            name=field,
+                            sport=biometric["series"],
+                            date=dt,
+                            value=biometric["value"],
+                        )
+                    )
+                    logger.debug(
+                        f"added {biometric["value"]} for {biometric["series"]} from {biometric["from"]}"
+                    )
+
+            session.commit()
+
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     id = "seb.laclau@gmail.com"
     dir = pathlib.Path.home() / "sports-planner"
     with open(dir / id / f"config.yaml") as f:
         config = yaml.safe_load(f)
 
     garmin_importer = GarminImporter(config["importers"]["garmin"])
-    print(garmin_importer.list_activities())
+    # activities = garmin_importer.list_activities()
+    from sports_planner_lib.athlete import Athlete
+
+    athlete = Athlete(id)
+    garmin_importer.sync_biometric_history(athlete, "ltp")
+    garmin_importer.sync_biometric_history(athlete, "ftp")
+    garmin_importer.sync_biometric_history(athlete, "lthr")
