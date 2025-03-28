@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import sweat  # type: ignore
 
-from sports_planner_lib.metrics.base import ActivityMetric
+from sports_planner_lib.metrics.base import ActivityMetric, ureg
 from sports_planner_lib.utils import format  # pylint: disable=W0622
 
 
@@ -16,16 +16,6 @@ class ActivityDate(ActivityMetric):
     """The total time during which the timer is running during an activity."""
 
     name = "Date"
-
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
 
     def compute(self) -> int:
         """
@@ -35,29 +25,21 @@ class ActivityDate(ActivityMetric):
             The number of seconds
         """
         try:
-            ts = self.activity.timestamp
-            return datetime.datetime.fromtimestamp(ts.total_seconds()).date()
+            return self.activity.timestamp.timestamp()
         except AttributeError:
             pass
-        except TypeError:
-            pass
-        return self.activity.records_df.index[0].date()
+        return self.activity.records_df.index[0].timestamp()
+
+    @classmethod
+    def _format(cls, value):
+        return f"{datetime.datetime.fromtimestamp(value):%Y-%m-%d}"
 
 
 class TimerTime(ActivityMetric):
     """The total time during which the timer is running during an activity."""
 
     name = "Total time"
-
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
+    aggregation_function = "sum"
 
     def compute(self) -> int:
         """
@@ -85,16 +67,7 @@ class ElapsedTime(ActivityMetric):
     """The total time between the start and end of an activity."""
 
     name = "Elapsed time"
-
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
+    aggregation_function = "sum"
 
     def compute(self) -> int:
         """
@@ -116,16 +89,8 @@ class MovingTime(ActivityMetric):
     """The total moving time in an activity."""
 
     name = "Moving time"
-
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
+    needed_columns = ["speed"]
+    aggregation_function = "sum"
 
     def compute(self) -> int:
         """
@@ -151,15 +116,8 @@ class TotalAscent(ActivityMetric):
 
     format_string = ".0f"
 
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
+    needed_columns = ["altitude"]
+    aggregation_function = "sum"
 
     def compute(self):
         """
@@ -172,6 +130,8 @@ class TotalAscent(ActivityMetric):
         hysteresis = 3
         ascent = 0
         for point in self.activity.records_df.altitude:
+            if point is None:
+                continue
             if first:
                 previous = point
                 first = False
@@ -192,15 +152,8 @@ class TotalDescent(ActivityMetric):
 
     format_string = ".0f"
 
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
+    needed_columns = ["altitude"]
+    aggregation_function = "sum"
 
     def compute(self):
         """
@@ -213,6 +166,8 @@ class TotalDescent(ActivityMetric):
         hysteresis = 3
         descent = 0
         for point in self.activity.records_df.altitude:
+            if point is None:
+                continue
             if first:
                 previous = point
                 first = False
@@ -231,15 +186,8 @@ class TotalDistance(ActivityMetric):
     name = "Total distance"
     unit = "km"
 
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            Always `True`
-        """
-        return True
+    needed_columns = ["distance"]
+    aggregation_function = "sum"
 
     def compute(self) -> int:
         """
@@ -259,16 +207,6 @@ class Sport(ActivityMetric):
     """The type of activity, including fields for sport, subsport, and name."""
 
     name = "Sport"
-
-    def applicable(self):
-        """
-        Returns
-        -------
-        bool
-            `True` if the activity summary contains the key "sport" or the "sport" field
-            of the dataframe has a unique value.
-        """
-        return True
 
     def compute(self):
         """
@@ -304,17 +242,8 @@ class AverageSpeed(ActivityMetric):
 
     deps = [TimerTime]
 
-    def applicable(self):
-        """
-
-        Returns
-        -------
-        bool
-            `True` if the dataframe contains a "speed" column
-        """
-        if "speed" in self.df.columns:
-            return True
-        return False
+    needed_columns = ["distance"]
+    aggregation_function = "mean"
 
     def compute(self) -> float:
         """
@@ -325,7 +254,39 @@ class AverageSpeed(ActivityMetric):
             The average speed (total distance divided by :class:`TimerTime`
         """
         time = self.get_metric(TimerTime)
-        return self.df["distance"].iloc[-1] / time
+        return self.activity.records_df["distance"].iloc[-1] / time
+
+
+class AveragePace(ActivityMetric):
+    """The average pace over an activity."""
+
+    name = "Average pace"
+    unit = "s/m"
+
+    deps = [AverageSpeed]
+    aggregation_function = "mean"
+
+    def compute(self) -> float:
+        """
+
+        Returns
+        -------
+        float
+            The average pace (1 / average speed)
+        """
+        speed = self.get_metric(AverageSpeed)
+        if speed > 0:
+            return 1 / speed
+
+    @classmethod
+    def _do_format(cls, value, target_unit=None):
+        if target_unit == "min/km":
+            seconds = (value * ureg.parse_units("km")).to("m").m
+        elif target_unit == "min/mile":
+            seconds = (value * ureg.parse_units("mile")).to("m").m
+        else:
+            raise ValueError(f"Unknown target unit {target_unit}")
+        return format.time(seconds, target="mins")
 
 
 class AveragePower(ActivityMetric):
@@ -335,17 +296,8 @@ class AveragePower(ActivityMetric):
     unit = "W"
     format_string = ".0f"
 
-    def applicable(self):
-        """
-
-        Returns
-        -------
-        bool
-            `True` if the dataframe contains a "power" column
-        """
-        if "power" in self.df.columns:
-            return True
-        return False
+    needed_columns = ["power"]
+    aggregation_function = "mean"
 
     def compute(self):
         """
@@ -355,7 +307,7 @@ class AveragePower(ActivityMetric):
         float
             The average power
         """
-        return self.df["power"].replace(0, np.nan).mean(skipna=True)
+        return self.activity.records_df["power"].replace(0, np.nan).mean(skipna=True)
 
 
 class AverageHR(ActivityMetric):
@@ -365,17 +317,8 @@ class AverageHR(ActivityMetric):
     unit = "bpm"
     format_string = ".0f"
 
-    def applicable(self):
-        """
-
-        Returns
-        -------
-        bool
-            `True` if the dataframe contains a "power" column
-        """
-        if "heartrate" in self.df.columns:
-            return True
-        return False
+    needed_columns = ["heartrate"]
+    aggregation_function = "mean"
 
     def compute(self):
         """
@@ -385,22 +328,7 @@ class AverageHR(ActivityMetric):
         float
             The average heartrate
         """
-        return self.df["heartrate"].mean()
-
-
-class ThresholdHeartrate(ActivityMetric):
-    name = "Lactate threshold heart rate"
-    unit = "bpm"
-    format_string = ".0f"
-    deps = [Sport]
-
-    def compute(self):
-        sport = self.get_metric(Sport)["sport"]
-        if sport == "running":
-            return 175
-        if sport == "cycling":
-            return 177
-        return 175
+        return self.activity.records_df["heartrate"].mean()
 
 
 class DurationRegressor(sweat.PowerDurationRegressor):
@@ -476,7 +404,7 @@ class RunningMetric(ActivityMetric, ABC):
 
     deps = [Sport]
 
-    def applicable(self) -> bool:
+    def _applicable(self) -> bool:
         """
 
         Returns
@@ -498,7 +426,7 @@ class CyclingMetric(ActivityMetric, ABC):
 
     deps = [Sport]
 
-    def applicable(self) -> bool:
+    def _applicable(self) -> bool:
         """
 
         Returns

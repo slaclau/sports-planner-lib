@@ -13,14 +13,12 @@ from sports_planner_lib.utils.logging import debug_time, info_time
 class UniversalStressScore(ActivityMetric):
     name = "Universal stress score"
     format_string = ".1f"
+    aggregation_function = "sum"
 
-    def applicable(self):
-        return True
-
-    deps = [GOVSS, CogganTSS]
+    weak_deps = [GOVSS, CogganTSS]
 
     def compute(self):
-        for dep in self.deps:
+        for dep in self.weak_deps:
             try:
                 return self.get_metric(dep)
             except KeyError:
@@ -97,7 +95,7 @@ class PMC:
             1
         )
 
-        self.df = df
+        self.activity.records_df = df
         if callback_func is not None:
             callback_func("Done")
 
@@ -115,11 +113,11 @@ class Banister:
         response = pmc.athlete.aggregate_metric(
             metric, "max", callback_func=callback_func
         )
-        self.df = pmc.df
+        self.activity.records_df = pmc.df
         first_date = response.index[0]
         index = pd.date_range(first_date, datetime.date.today())
         response = response.reindex(index, fill_value=np.nan)
-        self.df["response"] = response.mask(response == 0)
+        self.activity.records_df["response"] = response.mask(response == 0)
 
         def predict(row):
             predict = a + b * row["sts"] + c * row["lts"]
@@ -132,27 +130,35 @@ class Banister:
                 if callback_func is not None:
                     callback_func(f"Analysing season {season[0]} - {season[1]}")
                 a, b, c = self.find_params(season)
-                df = self.df
+                df = self.activity.records_df
                 df = df.loc[season[0] <= df.index]
                 if season != pmc.athlete.seasons[-1]:
                     df = df.loc[df.index <= season[1]]
 
                 df["predict"], df["future_predict"] = zip(*df.apply(predict, axis=1))
                 res.append(df)
-            self.df["predict"] = pd.concat(res)["predict"]
-            self.df["future_predict"] = pd.concat(res)["future_predict"]
+            self.activity.records_df["predict"] = pd.concat(res)["predict"]
+            self.activity.records_df["future_predict"] = pd.concat(res)[
+                "future_predict"
+            ]
         else:
             a, b, c = self.find_params()
-            self.df["predict"] = self.df.apply(predict, axis=1)[0]
+            self.activity.records_df["predict"] = self.activity.records_df.apply(
+                predict, axis=1
+            )[0]
         if callback_func is not None:
             callback_func(f"Done")
 
     @debug_time
     def find_params(self, season=None):
         def func(idx, a, b, c):
-            return a + b * self.df.loc[idx, "sts"] + c * self.df.loc[idx, "lts"]
+            return (
+                a
+                + b * self.activity.records_df.loc[idx, "sts"]
+                + c * self.activity.records_df.loc[idx, "lts"]
+            )
 
-        short_response = self.df["response"].dropna()
+        short_response = self.activity.records_df["response"].dropna()
         if season is not None:
             short_response = short_response.loc[season[0] <= short_response.index]
             short_response = short_response.loc[short_response.index <= season[1]]

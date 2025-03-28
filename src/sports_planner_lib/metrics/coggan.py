@@ -4,6 +4,7 @@ from sports_planner_lib.metrics.activity import (
     CyclingMetric,
     TimerTime,
 )
+from sports_planner_lib.metrics.athlete import FTP
 
 
 class CogganNP(CyclingMetric):
@@ -11,19 +12,14 @@ class CogganNP(CyclingMetric):
 
     format_string = ".0f"
 
-    def compute(self):
-        self.df["power30"] = self.df["power"].rolling(window="30s").mean()
+    needed_columns = ["power"]
 
-        power30_4 = self.df["power30"] ** 4
+    def compute(self):
+        power30 = self.activity.records_df["power"].rolling(window="30s").mean()
+
+        power30_4 = power30**4
 
         return power30_4.mean() ** 0.25
-
-
-class CyclingFTP(CyclingMetric):
-    name = "Functional threshold power (cycling)"
-
-    def compute(self):
-        return 206
 
 
 class CogganVI(CyclingMetric):
@@ -41,13 +37,13 @@ class CogganVI(CyclingMetric):
 class CogganIF(CyclingMetric):
     name = "Intensity factor"
 
-    deps = CyclingMetric.deps + [CogganNP, CyclingFTP]
+    deps = CyclingMetric.deps + [CogganNP, FTP]
 
     format_string = ".2f"
 
     def compute(self):
         np = self.get_metric(CogganNP)
-        ftp = self.get_metric(CyclingFTP)
+        ftp = self.get_metric(FTP)
 
         return np / ftp
 
@@ -55,13 +51,13 @@ class CogganIF(CyclingMetric):
 class CogganTSS(CyclingMetric):
     name = "Training stress score"
 
-    deps = CyclingMetric.deps + [CogganNP, CyclingFTP, TimerTime]
+    deps = CyclingMetric.deps + [CogganNP, FTP, TimerTime]
 
     format_string = ".1f"
 
     def compute(self):
         np = self.get_metric(CogganNP)
-        ftp = self.get_metric(CyclingFTP)
+        ftp = self.get_metric(FTP)
         ttt = self.get_metric(TimerTime)
 
         raw = np * np / ftp * ttt

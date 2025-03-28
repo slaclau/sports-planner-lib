@@ -72,6 +72,14 @@ class DurationRegressor(sweat.PowerDurationRegressor):
             return func, params
         return super()._model_selection()
 
+    def get_fitted_params(self):
+        if self.model == "pt":
+            func = self._pt_model
+            params = ["cp", "w_prime", "tau", "tau2", "a"]
+        func, params = super()._model_selection()
+
+        return {param: getattr(self, f"{param}_") for param in params}
+
 
 class CurveMeta(type):
     """A metaclass for :class:`Curve`."""
@@ -86,7 +94,11 @@ class CurveMeta(type):
         curve = type(
             f'Curve["{item}"]',
             (Curve,),
-            {"column": item, "name": f"{item}-duration curve"},
+            {
+                "column": item,
+                "needed_columns": [item],
+                "name": f"{item}-duration curve",
+            },
         )
         mcs.classes[item] = curve
         return curve
@@ -98,16 +110,6 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
     format_string = ".1f"
 
     column: str  #: The column of the dataframe to compute the curve for
-
-    def applicable(self):
-        """
-
-        Returns
-        -------
-        bool
-            `True` if the column exists
-        """
-        return self.column in self.df.columns
 
     def compute(self):
         """
@@ -137,6 +139,10 @@ class Curve(ActivityMetric, metaclass=CurveMeta):
                 pass
         return rtn
 
+    @classmethod
+    def _format(cls, value):
+        return "\n".join([f"{model}: {params}" for model, params in value.items()])
+
 
 class MeanMaxMeta(type):
     """A metaclass for :class:`MeanMax`."""
@@ -156,6 +162,7 @@ class MeanMaxMeta(type):
             (MeanMax,),
             {
                 "column": column,
+                "needed_columns": [column],
                 "time": time,
                 "deps": [],
                 "name": f"{duration} max {column}",
@@ -172,7 +179,7 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
     time: int
     format_string = ".2f"
 
-    def applicable(self) -> bool:
+    def _applicable(self) -> bool:
         """
 
         Returns
@@ -180,7 +187,7 @@ class MeanMax(ActivityMetric, metaclass=MeanMaxMeta):
         bool
             `True` if the relevant :class:`Curve` extends for a sufficient duration
         """
-        return self.column in self.df.columns and len(self.df.index) >= self.time
+        return len(self.activity.records_df.index) >= self.time
 
     def compute(self) -> float:
         """

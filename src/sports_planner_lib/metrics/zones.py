@@ -6,9 +6,9 @@ import pandas as pd
 from sports_planner_lib.metrics.activity import (
     ActivityMetric,
     Sport,
-    ThresholdHeartrate,
 )
-from sports_planner_lib.metrics.coggan import CyclingFTP
+from sports_planner_lib.metrics.athlete import LactateThresholdHR
+from sports_planner_lib.metrics.athlete import FTP
 
 
 class ZoneDefinitionsMeta(type):
@@ -24,9 +24,9 @@ class ZoneDefinitionsMeta(type):
         column = item
         deps = [Sport]
         if column == "heartrate":
-            deps.append(ThresholdHeartrate)
+            deps.append(LactateThresholdHR)
         elif column == "power":
-            deps.append(CyclingFTP)
+            deps.append(FTP)
 
         zone_defs = type(
             f'ZoneDefinitions["{column}"]',
@@ -45,16 +45,7 @@ class ZoneDefinitions(ActivityMetric, metaclass=ZoneDefinitionsMeta):
     """The zone definitions for a specific column."""
 
     column: str
-
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            `True` if the column is speed, power, or heartrate.
-        """
-        return True
+    needed_columns = [column]
 
     def compute(self) -> float:
         """
@@ -114,15 +105,7 @@ class Zones(ActivityMetric, metaclass=ZonesMeta):
 
     column: str
 
-    def applicable(self) -> bool:
-        """
-
-        Returns
-        -------
-        bool
-            `True` if the activity has the column, the column is speed, power, or heartrate, and zones are defined.
-        """
-        return True
+    needed_columns = [column]
 
     def compute(self) -> pd.DataFrame:
         """

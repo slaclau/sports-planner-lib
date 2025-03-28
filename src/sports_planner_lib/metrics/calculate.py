@@ -121,12 +121,14 @@ class MetricsCalculator:
         while i < len(desired_metrics):
             metric = desired_metrics[i]
             required_metrics.add(metric)
-            for _metric in metric.deps:
+            for _metric in metric.deps + metric.weak_deps:
                 if _metric not in desired_metrics:
                     desired_metrics.append(_metric)
             i += 1
 
-        deps_dict = {metric: metric.deps for metric in required_metrics}
+        deps_dict = {
+            metric: metric.deps + metric.weak_deps for metric in required_metrics
+        }
         deps = list(TopologicalSorter(deps_dict).static_order())
         return deps
 
