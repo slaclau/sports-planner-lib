@@ -1,4 +1,3 @@
-import abc
 import datetime
 import logging
 import typing
@@ -10,13 +9,14 @@ from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     MappedAsDataclass,
+    configure_mappers,
     foreign,
     mapped_column,
     relationship,
     sessionmaker,
 )
-from sqlalchemy_history import make_versioned
 
+from sports_planner_lib.db.base import Base, _Base
 from sports_planner_lib.metrics.calculate import (
     MetricsCalculator,
     get_metrics_map,
@@ -29,13 +29,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class Base(MappedAsDataclass, DeclarativeBase):
-    pass
-
-
 class Record(Base):
-    __tablename__ = "records"
     __versioned__ = {}
+    __tablename__ = "records"
 
     timestamp: Mapped[datetime.datetime] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -60,8 +56,8 @@ class Record(Base):
 
 
 class Lap(Base):
-    __tablename__ = "laps"
     __versioned__ = {}
+    __tablename__ = "laps"
 
     index: Mapped[int] = mapped_column(primary_key=True)
     activity_id: Mapped[int] = mapped_column(
@@ -69,10 +65,10 @@ class Lap(Base):
     )
     start_time: Mapped[datetime.datetime] = mapped_column()
 
-    start_position_lat: Mapped[float] = mapped_column()
-    start_position_long: Mapped[float] = mapped_column()
-    end_position_lat: Mapped[float] = mapped_column()
-    end_position_long: Mapped[float] = mapped_column()
+    start_position_lat: Mapped[float | None] = mapped_column()
+    start_position_long: Mapped[float | None] = mapped_column()
+    end_position_lat: Mapped[float | None] = mapped_column()
+    end_position_long: Mapped[float | None] = mapped_column()
 
     total_elapsed_time: Mapped[float] = mapped_column()
     total_elapsed_time: Mapped[float] = mapped_column()
@@ -96,8 +92,8 @@ class Session(Base):
 
 
 class UnknownMessage(Base):
-    __tablename__ = "unknown_messages"
     __versioned__ = {}
+    __tablename__ = "unknown_messages"
 
     id = mapped_column(Integer, primary_key=True, autoincrement=True)
     activity_id: Mapped[int] = mapped_column(ForeignKey("activities.activity_id"))
@@ -110,8 +106,8 @@ class UnknownMessage(Base):
 
 
 class Metric(Base):
-    __tablename__ = "metrics"
     __versioned__ = {}
+    __tablename__ = "metrics"
 
     activity_id: Mapped[int] = mapped_column(
         ForeignKey("activities.activity_id"), primary_key=True
@@ -141,8 +137,8 @@ class MeanMax(Base):
 
 
 class Activity(Base):
-    __tablename__ = "activities"
     __versioned__ = {}
+    __tablename__ = "activities"
 
     activity_id: Mapped[int] = mapped_column(primary_key=True)
     timestamp: Mapped[datetime.datetime] = mapped_column()
@@ -150,6 +146,8 @@ class Activity(Base):
     name: Mapped[str] = mapped_column()
     source: Mapped[str] = mapped_column()
     original_file: Mapped[str] = mapped_column()
+
+    available_columns: Mapped[list[str]] = mapped_column(JSON)
 
     records = relationship(
         Record,
@@ -187,15 +185,18 @@ class Activity(Base):
         back_populates="activity",
     )
 
-    def get_metric(self, name):
+    def get_metric(self, name, compute=True, query=True, athlete=None):
         logger.debug(f"getting {name} for {self.activity_id}")
         if isinstance(name, type):
             name = name.__name__
-        for metric in self.metrics:
-            if metric.name == name:
-                if metric.value is not None:
-                    return metric.value
-                return metric.json_value
+        if query:
+            for metric in self.metrics:
+                if metric.name == name:
+                    if metric.value is not None:
+                        return metric.value
+                    return metric.json_value
+        if not compute:
+            return None
 
         if name in get_metrics_map():
             metric = get_metrics_map()[name]
@@ -206,7 +207,7 @@ class Activity(Base):
         if metric is None:
             logger.error(f"{name} not found")
             return
-        metric_instance = metric(self)
+        metric_instance = metric(self, athlete=athlete)
         if not metric_instance.get_applicable():
             logger.debug(f"{name} is not applicable")
             return None
@@ -225,12 +226,15 @@ class Activity(Base):
     def records_df(self):
         if self._records_df is None:
             df = pd.DataFrame([vars(record) for record in self.records])
+            df = df.dropna(axis="columns", how="all")
             try:
                 df.index = df["timestamp"]
-                self._records_df = df
             except KeyError:
-                print(df)
-                raise KeyError
+                logger.error(f"no timestamp in {self.activity_id}")
+                logger.error(df)
+            self._records_df = df
+        if self._records_df.empty:
+            raise ValueError("empty records df")
         return self._records_df
 
     @property
@@ -249,10 +253,20 @@ class Activity(Base):
         return df
 
 
-if __name__ == "__main__":
+def get_sessionmaker():
     engine = create_engine(
         "sqlite:////home/slaclau/sports-planner/seb.laclau@gmail.com/athlete.db"
     )
     Session = sessionmaker(bind=engine)
-    Base.metadata.create_all(engine)
-    make_versioned(user_cls=None)
+    return Session
+
+
+if __name__ == "__main__":
+    from sports_planner_lib.db.other import ConfiguredValue
+
+    configure_mappers()
+    engine = create_engine(
+        "sqlite:////home/slaclau/sports-planner/seb.laclau@gmail.com/athlete.db"
+    )
+    Session = sessionmaker(bind=engine)
+    _Base.metadata.create_all(engine)
