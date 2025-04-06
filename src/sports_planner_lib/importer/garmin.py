@@ -177,25 +177,25 @@ class GarminImporter(ActivityImporter):
                 athlete,
                 metadata["activity_id"],
                 activity["data"],
-                force=force == True or "records" in force,
+                force=force == True or (isinstance(force, list) and "records" in force),
             )
             self._import_laps_df(
                 athlete,
                 metadata["activity_id"],
                 activity["laps"],
-                force=force == True or "laps" in force,
+                force=force == True or (isinstance(force, list) and  "laps" in force),
             )
             self._import_sessions_df(
                 athlete,
                 metadata["activity_id"],
                 activity["sessions"],
-                force=force == True or "sessions" in force,
+                force=force == True or (isinstance(force, list) and "sessions" in force),
             )
             self._import_unknown_messages(
                 athlete,
                 metadata["activity_id"],
                 activity["unknown_messages"],
-                force=force == True or "unknowns" in force,
+                force=force == True or (isinstance(force, list) and "unknowns" in force),
             )
 
     def _import_unknown_messages(
