@@ -7,7 +7,7 @@ from sports_planner_lib.metrics.base import ActivityMetric
 
 
 class UnknownMessageMetric(ActivityMetric, ABC):
-    message_name: str
+    message_name: str = ""
     field_name: str
     scale: float
     allow_zero: bool
@@ -24,6 +24,8 @@ class UnknownMessageMetric(ActivityMetric, ABC):
         for unknown in self.activity.unknown_messages:
             if unknown.type == self.message_name:
                 val = unknown.record[self.field_name]
+                if val is None:
+                    return val
                 if isinstance(val, str):
                     return val
                 rtn = val * self.scale

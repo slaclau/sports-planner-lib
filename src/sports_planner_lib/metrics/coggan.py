@@ -55,6 +55,8 @@ class CogganTSS(CyclingMetric):
 
     format_string = ".1f"
 
+    aggregation_function = "sum"
+
     def compute(self):
         np = self.get_metric(CogganNP)
         ftp = self.get_metric(FTP)
