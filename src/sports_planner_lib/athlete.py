@@ -430,4 +430,4 @@ if __name__ == "__main__":
     # logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
     athlete = Athlete("seb.laclau@gmail.com")
     athlete.import_activities(redownload=False, reimport="unknowns")
-    # athlete.update_db(recompute=False)
+    athlete.update_db(recompute=False)
