@@ -1,4 +1,6 @@
 import datetime
+import logging
+import time
 
 import numpy as np
 import pandas as pd
@@ -7,7 +9,7 @@ import scipy.optimize
 from sports_planner_lib.metrics.base import ActivityMetric
 from sports_planner_lib.metrics.coggan import CogganTSS
 from sports_planner_lib.metrics.govss import GOVSS
-from sports_planner_lib.utils.logging import debug_time, info_time
+from sports_planner_lib.utils.logging import debug_time, info_time, logtime
 
 
 class UniversalStressScore(ActivityMetric):
@@ -27,77 +29,82 @@ class UniversalStressScore(ActivityMetric):
 
 
 class PMC:
-    @info_time
-    def __init__(
-        self, athlete, metric, t_short=7, t_long=42, title=None, callback_func=None
-    ):
+    def __init__(self, athlete, metric, t_short=7, t_long=42, title=None):
         self.athlete = athlete
         self.metric = metric
         self.t_short = t_short
         self.t_long = t_long
         self.title = title
-        if callback_func is not None:
-            callback_func(f"Aggregating {metric.name}")
-        impulse = athlete.aggregate_metric(metric, "sum", callback_func=callback_func)
-        future_impulse = athlete.aggregate_metric(
-            metric, "sum", callback_func=callback_func, future=True
-        )
-        df = impulse.to_frame(name="impulse")
-        future_impulse = future_impulse.to_frame(name="future_impulse")
+        self.compute()
+
+    def compute(self):
+        df = self.athlete.aggregate_metric(self.metric)
+        # future_impulse = athlete.aggregate_metric(
+        #     metric, "sum", callback_func=callback_func, future=True
+        # )
+
+        df.rename(columns={"value": "impulse"}, inplace=True)
+
+        # future_impulse = future_impulse.to_frame(name="future_impulse")
         first_date = df.index[0]
         yesterday = datetime.date.today() - datetime.timedelta(days=1)
-        index = pd.date_range(df.index[0], future_impulse.index[-1])
-        df = df.reindex(index, fill_value=0)
-        df["future_impulse"] = future_impulse["future_impulse"]
+        # index = pd.date_range(df.index[0], future_impulse.index[-1])
+        # df = df.reindex(index, fill_value=0)
+        # df["future_impulse"] = future_impulse["future_impulse"]
 
         df.loc[df.index[0], "sts"] = 0
         df.loc[df.index[0], "lts"] = 0
 
-        exp_short = np.e ** (-1 / t_short)
-        exp_long = np.e ** (-1 / t_long)
+        exp_short = np.e ** (-1 / self.t_short)
+        exp_long = np.e ** (-1 / self.t_long)
 
-        if callback_func is not None:
-            callback_func("Building PMC")
         future = False
         sts = 0
         lts = 0
-        for i in df.index:
-            if i.date() == first_date.date():
+
+        n = len(df)
+        sts_col = np.zeros([n])
+        lts_col = np.zeros([n])
+
+        for i, impulse in enumerate(df.impulse):
+            if i == 0:
                 continue
-            impulse = df.loc[i, "impulse"]
-            future_impulse = df.loc[i, "future_impulse"]
+            # impulse = df.loc[i, "impulse"]
+            # future_impulse = df.loc[i, "future_impulse"]
             sts = sts + (impulse - sts) * (1 - exp_short)
             lts = lts + (impulse - lts) * (1 - exp_long)
-            df.loc[i, "sts"] = sts
-            df.loc[i, "lts"] = lts
-            df.loc[i, "predicted_sts"] = sts
-            df.loc[i, "predicted_lts"] = lts
+            sts_col[i] = sts
+            lts_col[i] = lts
+            # df.loc[i, "sts"] = sts
+            # df.loc[i, "lts"] = lts
+            # df.loc[i, "predicted_sts"] = sts
+            # df.loc[i, "predicted_lts"] = lts
 
-            if future:
-                predicted_sts = predicted_sts + (future_impulse - predicted_sts) * (
-                    1 - exp_short
-                )
-                predicted_lts = predicted_lts + (future_impulse - predicted_lts) * (
-                    1 - exp_long
-                )
-                df.loc[i, "predicted_sts"] = predicted_sts
-                df.loc[i, "predicted_lts"] = predicted_lts
+            # if future:
+            #     predicted_sts = predicted_sts + (future_impulse - predicted_sts) * (
+            #         1 - exp_short
+            #     )
+            #     predicted_lts = predicted_lts + (future_impulse - predicted_lts) * (
+            #         1 - exp_long
+            #     )
+            #     df.loc[i, "predicted_sts"] = predicted_sts
+            #     df.loc[i, "predicted_lts"] = predicted_lts
 
-            if i.date() == yesterday:
-                predicted_sts = sts
-                predicted_lts = lts
-                future = True
+            # if i.date() == yesterday:
+            #     predicted_sts = sts
+            #     predicted_lts = lts
+            #     future = True
+        df.sts = sts_col
+        df.lts = lts_col
 
-        df["rr"] = df["lts"] - df["lts"].shift(t_short)
+        df["rr"] = df["lts"] - df["lts"].shift(self.t_short)
         df["tsb"] = df["lts"].shift(1) - df["sts"].shift(1)
-        df["predicted_rr"] = df["predicted_lts"] - df["predicted_lts"].shift(t_short)
-        df["predicted_tsb"] = df["predicted_lts"].shift(1) - df["predicted_sts"].shift(
-            1
-        )
+        # df["predicted_rr"] = df["predicted_lts"] - df["predicted_lts"].shift(t_short)
+        # df["predicted_tsb"] = df["predicted_lts"].shift(1) - df["predicted_sts"].shift(
+        #     1
+        # )
 
-        self.activity.records_df = df
-        if callback_func is not None:
-            callback_func("Done")
+        self.df = df
 
 
 class Banister:
@@ -163,3 +170,11 @@ class Banister:
             short_response = short_response.loc[season[0] <= short_response.index]
             short_response = short_response.loc[short_response.index <= season[1]]
         return scipy.optimize.curve_fit(func, short_response.index, short_response)[0]
+
+
+if __name__ == "__main__":
+    from sports_planner_lib.athlete import Athlete
+
+    logging.getLogger().setLevel(logging.DEBUG)
+    ath = Athlete("seb.laclau@gmail.com")
+    pmc = PMC(ath, "UniversalStressScore")

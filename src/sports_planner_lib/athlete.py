@@ -22,6 +22,7 @@ from sports_planner_lib.metrics.calculate import (
 from sports_planner_lib.metrics.garmin import Firstbeat
 from sports_planner_lib.metrics.pdm import Curve
 from sports_planner_lib.metrics.pdm import MeanMax as MeanMaxMetric
+from sports_planner_lib.metrics.pmc import PMC
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,8 @@ class Athlete:
     It provides methods to access activities and workouts as well as for
     aggregating metrics.
     """
+
+    pmcs: dict[str, PMC] = {}
 
     def __init__(self, id):
         self.id = id
@@ -62,11 +65,9 @@ class Athlete:
             )
 
     def get_metric_history(self, metric, sport=None, start_date=None, end_date=None):
-        t1 = time.time()
         if start_date is None:
-            start_date = min(
-                [activity.timestamp.date() for activity in self.activities]
-            )
+            with self.Session() as session:
+                start_date = session.query(func.min(Activity.timestamp)).scalar()
         if end_date is None:
             end_date = datetime.date.today()
         with self.Session() as session:
@@ -92,8 +93,9 @@ class Athlete:
             raise ValueError(f"{metric} is not cached")
         with self.Session() as session:
             metrics = (
-                session.query(Metric)
-                .options([selectinload(Metric.activity)])
+                session.query(Activity.timestamp, Metric)
+                .filter(Activity.activity_id == Metric.activity_id)
+                # .options([selectinload(Metric.activity)])
                 .filter(Metric.name == metric)
                 .filter(Metric.activity_id.in_(activities))
                 .all()
@@ -165,13 +167,16 @@ class Athlete:
     def aggregate_metric(self, metric, sport=None, start_date=None, end_date=None):
         metric_class, fields = parse_metric_string(metric)
         metrics = self.get_metric_history(metric, sport, start_date, end_date)
-        metrics = [
-            (m.activity.activity_id, m.activity.timestamp, m.value) for m in metrics
-        ]
+        metrics = [(m.Metric.activity_id, m.timestamp, m.Metric.value) for m in metrics]
         df = pd.DataFrame(metrics, columns=["activity_id", "timestamp", "value"])
         df.timestamp = pd.to_datetime(df.timestamp)
         df.timestamp = df.timestamp.dt.floor("d")
         return df.groupby("timestamp").apply(metric_class.aggregation_function)
+
+    def get_pmc(self, metric):
+        if metric not in self.pmcs:
+            self.pmcs[metric] = PMC(self, metric)
+        return self.pmcs[metric]
 
     def get_activity_full(self, activity):
         with self.Session() as session:
@@ -398,7 +403,7 @@ class Athlete:
                             json_value=None,
                         )
                     )
-                except TypeError:
+                except (TypeError, ValueError):
                     session.merge(
                         Metric(
                             activity_id=activity.activity_id,
